@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coming Soon</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #f15a29; /* A reddish-orange color for links */
+            --background-color: #8c422c; /* A deep reddish-brown for Mars */
+            --text-color: #f5f5f5; /* Light text for contrast */
+            --shadow-light: rgba(0, 0, 0, 0.2);
+            --shadow-strong: rgba(0, 0, 0, 0.4);
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--background-color);
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            min-height: 100vh;
+            text-align: center;
+            color: var(--text-color);
+            font-family: 'Poppins', sans-serif;
+            transition: background-color 0.5s ease;
+        }
+
+        .image-container {
+            width: 100%;
+            height: 75vh; /* Default height for larger screens */
+            overflow: hidden;
+            position: relative;
+        }
+
+        .fullscreen-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .content-container {
+            max-width: 1200px;
+            margin: 40px auto 20px;
+            padding: 0 20px;
+        }
+
+        .video-container {
+            width: 80%;
+            max-width: 800px;
+            margin: 0 auto 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 20px var(--shadow-strong);
+            overflow: hidden;
+        }
+
+        video {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            font-weight: 600;
+            margin-top: 0;
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+        }
+
+        p {
+            font-size: 1.2em;
+            font-weight: 300;
+            margin-bottom: 30px;
+            max-width: 600px;
+            line-height: 1.6;
+        }
+
+        .game-link {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: var(--text-color);
+            text-decoration: none;
+            padding: 12px 28px;
+            border: 2px solid var(--text-color);
+            border-radius: 50px;
+            transition: background-color 0.3s ease, color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 4px 6px var(--shadow-light);
+        }
+        
+        .game-link:hover {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            color: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px var(--shadow-strong);
+        }
+
+        /* Responsive adjustments for screens up to 768px wide (smartphones) */
+        @media (max-width: 768px) {
+            .image-container {
+                height: 40vh; /* Reduced height for mobile devices */
+            }
+            .video-container {
+                width: 90%;
+            }
+            h1 {
+                font-size: 2em;
+            }
+            p {
+                font-size: 1em;
+            }
+            .game-link {
+                font-size: 1em;
+                padding: 10px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="image-container">
+        <img src="comingsoon.jpg" alt="Coming Soon" class="fullscreen-image" onerror="this.alt='Image failed to load';">
+    </div>
+
+    <div class="content-container">
+        <div class="video-container">
+            <video id="myVideo" controls muted playsinline>
+                <source src="1v.mp4" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+        </div>
+
+        <h1>Our Website is Coming Soon!</h1>
+        <p>We're hard at work creating something truly amazing for you. Stay tuned and check back soon for updates!</p>
+        <a href="/game/game.html" class="game-link">Play a little game! (PC/Laptop only)</a>
+    </div>
+
+    <script>
+        const videoElement = document.getElementById('myVideo');
+        let playCount = 0;
+
+        // Try to play the video on page load.
+        videoElement.play().catch(error => {
+            console.log("Autoplay was prevented:", error);
+        });
+
+        // Listen for the 'ended' event
+        videoElement.addEventListener('ended', () => {
+            playCount++;
+            if (playCount < 2) {
+                videoElement.play();
+            } else {
+                videoElement.pause();
+            }
+        });
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96ae9958ed1ce8fc',t:'MTc1NDc4NDY0Mi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

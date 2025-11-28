@@ -1,0 +1,382 @@
+<!DOCTYPE html>     
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mars Invaders - Mars Alien</title>
+    <style>
+        body {
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        canvas {
+            border: 2px solid #fff;
+            background-image: url('news.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+        #gameOver {
+            position: absolute;
+            color: red;
+            font-family: Arial, sans-serif;
+            font-size: 48px;
+            display: none;
+            text-align: center;
+        }
+        audio {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div id="gameOver">Game Over - Press R to Restart</div>
+    <audio id="backgroundMusic" loop>
+        <source src="entertainer.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const gameOverText = document.getElementById('gameOver');
+        const backgroundMusic = document.getElementById('backgroundMusic');
+
+        // Load sprite images
+        const playerSprite = new Image();
+        playerSprite.src = 'https://mars-alien.com/game/paddle1.png'; // Absolute path for testing
+        const mainbaseSprite = new Image();
+        mainbaseSprite.src = 'https://mars-alien.com/game/mainbase.png'; // Absolute path for testing
+        const glowtubeSprite = new Image();
+        glowtubeSprite.src = 'https://mars-alien.com/game/glowtube.png'; // Absolute path for testing
+
+        // Audio handling
+        let isMusicPlaying = false;
+        let isFirstInteraction = true;
+        let isToggling = false;
+
+        function tryPlayMusic() {
+            if (!isMusicPlaying && !isToggling) {
+                isToggling = true;
+                const playPromise = backgroundMusic.play();
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        console.log('Background music started playing');
+                        isMusicPlaying = true;
+                        isToggling = false;
+                    }).catch(error => {
+                        console.error('Failed to play music:', error);
+                        isToggling = false;
+                    });
+                }
+            }
+        }
+
+        function toggleMusic() {
+            if (isToggling) return;
+            isToggling = true;
+            if (isMusicPlaying) {
+                backgroundMusic.pause();
+                isMusicPlaying = false;
+                console.log('Music paused');
+            } else {
+                tryPlayMusic();
+            }
+            setTimeout(() => { isToggling = false; }, 200);
+        }
+
+        backgroundMusic.addEventListener('canplaythrough', () => {
+            console.log('Audio file loaded successfully');
+        });
+        backgroundMusic.addEventListener('error', (e) => {
+            console.error('Audio file error:', e);
+        });
+
+        // Game settings
+        const playerWidth = 120;
+        const playerHeight = 120;
+        const visibleWidth = 73; // Approximate scaled visible width of paddle1.png
+        const visibleHeight = 32; // Approximate scaled visible height of paddle1.png
+        const alienWidth = 54;
+        const alienHeight = 27;
+        const bulletWidth = 5;
+        const bulletHeight = 10;
+        const alienRows = 5;
+        const alienCols = 9;
+        let alienSpeed = 1;
+        const bulletSpeed = 5;
+
+        // Game state
+        let player = { x: canvas.width / 2 - playerWidth / 2, y: canvas.height - playerHeight, width: playerWidth, height: playerHeight, visibleWidth: visibleWidth, visibleHeight: visibleHeight, speed: 5 };
+        
+        let aliens = [];
+        let playerBullets = [];
+        let alienBullets = [];
+        let score = 0;
+        let lives = 3;
+        let alienDirection = 1;
+        let alienMoveDown = false;
+        let gameOver = false;
+        let levelTransition = false;
+
+        // Initialize aliens with random sprites
+        function initAliens() {
+            aliens = [];
+            for (let row = 0; row < alienRows; row++) {
+                for (let col = 0; col < alienCols; col++) {
+                    const isGlowtube = Math.random() > 0.5;
+                    aliens.push({
+                        x: col * (alienWidth + 10) + 50,
+                        y: row * (alienHeight + 10) + 30, // Adjusted to start near the top
+                        width: alienWidth,
+                        height: alienHeight,
+                        alive: true,
+                        sprite: isGlowtube ? glowtubeSprite : mainbaseSprite,
+                        hits: isGlowtube ? 2 : 1
+                    });
+                }
+            }
+        }
+
+        // Reset game
+        function resetGame() {
+            player = { x: canvas.width / 2 - playerWidth / 2, y: canvas.height - playerHeight, width: playerWidth, height: playerHeight, visibleWidth: visibleWidth, visibleHeight: visibleHeight, speed: 5 };
+            aliens = [];
+            playerBullets = [];
+            alienBullets = [];
+            score = 0;
+            lives = 3;
+            alienDirection = 1;
+            alienMoveDown = false;
+            gameOver = false;
+            levelTransition = false;
+            alienSpeed = 1;
+            gameOverText.style.display = 'none';
+            initAliens();
+            gameLoop();
+        }
+
+        // Keyboard controls
+        let keys = {};
+        document.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            if (isFirstInteraction && ['ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
+                tryPlayMusic();
+                isFirstInteraction = false;
+            }
+            if (e.code === 'KeyM') {
+                toggleMusic();
+            }
+            if (gameOver && e.code === 'KeyR') {
+                resetGame();
+            }
+        });
+        document.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+        // Draw player
+        function drawPlayer() {
+            if (playerSprite.complete && playerSprite.naturalWidth !== 0) {
+                ctx.drawImage(playerSprite, player.x, player.y, player.width, player.height);
+                console.log('Drawing player sprite');
+            } else {
+                console.error('Player sprite failed to load, using fallback');
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.moveTo(player.x, player.y + playerHeight);
+                ctx.lineTo(player.x + playerWidth / 2, player.y);
+                ctx.lineTo(player.x + playerWidth, player.y + playerHeight);
+                ctx.fill();
+            }
+        }
+
+        // Draw aliens
+        function drawAliens() {
+            aliens.forEach(alien => {
+                if (alien.alive) {
+                    if (alien.sprite.complete && alien.sprite.naturalWidth !== 0) {
+                        ctx.drawImage(alien.sprite, alien.x, alien.y, alien.width, alien.height); // Fixed to use alien.y
+                        console.log('Drawing alien sprite:', alien.sprite.src);
+                    } else {
+                        console.error('Alien sprite failed to load, using fallback for', alien.sprite.src);
+                        ctx.fillStyle = alien.sprite === glowtubeSprite ? 'blue' : 'green';
+                        ctx.fillRect(alien.x, alien.y, alien.width, alien.height);
+                    }
+                }
+            });
+        }
+
+        // Draw bullets
+        function drawBullets() {
+            ctx.fillStyle = 'limegreen';
+            playerBullets.forEach(bullet => {
+                ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+            });
+            ctx.fillStyle = 'red';
+            alienBullets.forEach(bullet => {
+                ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+            });
+        }
+
+        // Draw score and lives
+        function drawUI() {
+            ctx.fillStyle = 'white';
+            ctx.font = '20px Arial';
+            ctx.fillText(`Score: ${score}`, 10, 20);
+            ctx.fillText(`Lives: ${lives}`, canvas.width - 80, 20);
+        }
+
+        // Update player position
+        function updatePlayer() {
+            if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
+            if (keys['ArrowRight'] && player.x < canvas.width - player.width) player.x += player.speed;
+            if (keys['Space'] && !playerBullets.some(b => b.y > player.y - 50)) {
+                playerBullets.push({ x: player.x + playerWidth / 2 - bulletWidth / 2, y: player.y, width: bulletWidth, height: bulletHeight });
+            }
+        }
+
+        // Update aliens
+        function updateAliens() {
+            if (levelTransition) return;
+
+            let minX = canvas.width, maxX = 0;
+            aliens.forEach(alien => {
+                if (alien.alive) {
+                    if (alien.x < minX) minX = alien.x;
+                    if (alien.x + alien.width > maxX) maxX = alien.x + alien.width;
+                }
+            });
+
+            if (maxX > canvas.width - 10 || minX < 10) {
+                alienDirection *= -1;
+                alienMoveDown = true;
+            }
+
+            aliens.forEach(alien => {
+                if (alien.alive) {
+                    alien.x += alienSpeed * alienDirection;
+                    if (alienMoveDown) alien.y += 10;
+                    if (Math.random() < 0.001 && alienBullets.length < 3) {
+                        alienBullets.push({ x: alien.x + alien.width / 2 - bulletWidth / 2, y: alien.y + alien.height, width: bulletWidth, height: bulletHeight });
+                    }
+                }
+            });
+            alienMoveDown = false;
+        }
+
+        // Update bullets
+        function updateBullets() {
+            playerBullets = playerBullets.filter(b => b.y > 0);
+            playerBullets.forEach(bullet => { bullet.y -= bulletSpeed; });
+
+            alienBullets = alienBullets.filter(b => b.y < canvas.height);
+            alienBullets.forEach(bullet => { bullet.y += bulletSpeed; });
+        }
+
+        // Check collisions
+        function checkCollisions() {
+            // Player collision with alien bullets (using visible hitbox with offset)
+            alienBullets.forEach(bullet => {
+                console.log('Player Hitbox:', player.x + 23, player.y + 44, player.visibleWidth, player.visibleHeight);
+                if (bullet.x < (player.x + 23) + player.visibleWidth && bullet.x + bullet.width > (player.x + 23) && 
+                    bullet.y < (player.y + 44) + player.visibleHeight && bullet.y + bullet.height > (player.y + 44)) {
+                    lives--;
+                    bullet.y = canvas.height + 10;
+                    if (lives <= 0) {
+                        gameOver = true;
+                        gameOverText.style.display = 'block';
+                    }
+                }
+            });
+
+            // Alien collision with player bullets
+            playerBullets.forEach(bullet => {
+                aliens.forEach(alien => {
+                    if (alien.alive && bullet.x < alien.x + alien.width && bullet.x + bullet.width > alien.x && 
+                        bullet.y < alien.y + alien.height && bullet.y + bullet.height > alien.y) {
+                        alien.hits--;
+                        bullet.y = -10; // Remove bullet
+                        if (alien.hits <= 0) {
+                            alien.alive = false;
+                            score += alien.sprite === glowtubeSprite ? 20 : 10; // Bonus for glowtube
+                        }
+                    }
+                });
+            });
+
+            // Game over if aliens reach player
+            aliens.forEach(alien => {
+                if (alien.alive && alien.y + alien.height > player.y) {
+                    gameOver = true;
+                    gameOverText.style.display = 'block';
+                }
+            });
+        }
+
+        // Reset level
+        function resetLevel() {
+            levelTransition = true;
+            alienBullets = [];
+            playerBullets = [];
+            setTimeout(() => {
+                initAliens();
+                alienSpeed *= 2;
+                levelTransition = false;
+            }, 500);
+        }
+
+        // Game loop
+        function gameLoop() {
+            if (gameOver) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            updatePlayer();
+            updateAliens();
+            updateBullets();
+            checkCollisions();
+            drawPlayer();
+            drawAliens();
+            drawBullets();
+            drawUI();
+
+            if (aliens.every(alien => !alien.alive) && !levelTransition) {
+                resetLevel();
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Wait for sprites to load before starting
+        let imagesLoaded = 0;
+        const totalImages = 3; // paddle1.png, mainbase.png, glowtube.png
+        function checkImagesLoaded() {
+            console.log(`Images loaded: ${imagesLoaded}/${totalImages}`);
+            imagesLoaded++;
+            if (imagesLoaded === totalImages) {
+                console.log('All images loaded, starting game');
+                initAliens();
+                gameLoop();
+            }
+        }
+        playerSprite.onload = checkImagesLoaded;
+        mainbaseSprite.onload = checkImagesLoaded;
+        glowtubeSprite.onload = checkImagesLoaded;
+        playerSprite.onerror = () => {
+            console.error('Failed to load paddle1.png, using fallback');
+            checkImagesLoaded();
+        };
+        mainbaseSprite.onerror = () => {
+            console.error('Failed to load mainbase.png, using fallback');
+            checkImagesLoaded();
+        };
+        glowtubeSprite.onerror = () => {
+            console.error('Failed to load glowtube.png, using fallback');
+            checkImagesLoaded();
+        };
+    </script>
+</body>
+</html>
