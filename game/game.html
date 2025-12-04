@@ -2,17 +2,21 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Mars Invaders - Mars Alien</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
         body {
             background-color: #000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
             overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            position: relative;
+            touch-action: none; /* Prevent pinch zoom/scroll */
         }
         canvas {
             border: 2px solid #fff;
@@ -20,6 +24,8 @@
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
+            position: absolute;
+            display: block;
         }
         #gameOver {
             position: absolute;
@@ -28,6 +34,38 @@
             font-size: 48px;
             display: none;
             text-align: center;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            text-shadow: 2px 2px 4px #000;
+        }
+        #rotateScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            color: #fff;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            z-index: 100;
+            font-size: clamp(20px, 5vw, 32px);
+        }
+        #rotateScreen h1 {
+            margin-bottom: 20px;
+        }
+        #rotateScreen .icon {
+            font-size: clamp(48px, 15vw, 96px);
+            animation: spin 2s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
         }
         audio {
             display: none;
@@ -35,27 +73,34 @@
     </style>
 </head>
 <body>
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <canvas id="gameCanvas"></canvas>
     <div id="gameOver">Game Over - Press R to Restart</div>
+    <div id="rotateScreen">
+        <h1>Please rotate to landscape</h1>
+        <div class="icon">↻</div>
+    </div>
 
     <!-- Background music -->
     <audio id="backgroundMusic" loop preload="auto">
         <source src="entertainer.mp3" type="audio/mpeg">
-        Your browser does not support the audio element.
     </audio>
 
     <!-- Shooting sound -->
     <audio id="shotSound" preload="auto">
         <source src="shot.mp3" type="audio/mpeg">
-        Your browser does not support the audio element.
     </audio>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const gameOverText = document.getElementById('gameOver');
+        const rotateScreen = document.getElementById('rotateScreen');
         const backgroundMusic = document.getElementById('backgroundMusic');
         const shotSound = document.getElementById('shotSound');
+
+        // ------------------- GAME DIMENSIONS (LOGICAL) -------------------
+        const GAME_WIDTH = 800;
+        const GAME_HEIGHT = 600;
 
         // Load sprite images
         const playerSprite = new Image();
@@ -65,11 +110,17 @@
         const glowtubeSprite = new Image();
         glowtubeSprite.src = 'https://mars-alien.com/game/glowtube.png';
 
-        // ------------------- AUDIO HANDLING -------------------
-        let isMusicPlaying = false;
+        // ------------------- MOBILE DETECTION & CONTROLS -------------------
+        const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        let pointerId = null;
+        let pointerX = -1;
+        let isPortraitMode = false;
+        let orientationLocked = false;
         let isFirstInteraction = true;
         let isToggling = false;
+        let isMusicPlaying = false;
 
+        // ------------------- AUDIO -------------------
         function tryPlayMusic() {
             if (!isMusicPlaying && !isToggling) {
                 isToggling = true;
@@ -98,12 +149,104 @@
             setTimeout(() => isToggling = false, 200);
         }
 
-        // FIXED: Clone audio each time for crisp rapid-fire sounds (no overlap/throttling)
         function playShotSound() {
             const audio = shotSound.cloneNode(true);
-            audio.volume = 0.5; // Optional: Adjust volume if too loud
+            audio.volume = 0.5;
             audio.play().catch(err => console.log('Shot play failed:', err));
         }
+
+        function lockOrientation() {
+            if (screen.orientation && screen.orientation.lock && !orientationLocked) {
+                screen.orientation.lock('landscape').then(() => {
+                    orientationLocked = true;
+                }).catch(e => {
+                    console.log('Orientation lock failed:', e);
+                });
+            }
+        }
+
+        function handleFirstInteraction() {
+            if (isFirstInteraction) {
+                isFirstInteraction = false;
+                tryPlayMusic();
+                lockOrientation();
+            }
+        }
+
+        // ------------------- TOUCH / POINTER CONTROLS -------------------
+        function updatePointer(e) {
+            const rect = canvas.getBoundingClientRect();
+            pointerX = ((e.clientX - rect.left) / rect.width) * GAME_WIDTH;
+        }
+
+        canvas.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            handleFirstInteraction();
+            pointerId = e.pointerId;
+            updatePointer(e);
+        });
+
+        canvas.addEventListener('pointermove', (e) => {
+            if (e.pointerId === pointerId) {
+                e.preventDefault();
+                updatePointer(e);
+            }
+        });
+
+        canvas.addEventListener('pointerup', (e) => {
+            if (e.pointerId === pointerId) {
+                e.preventDefault();
+                pointerId = null;
+                pointerX = -1;
+            }
+        });
+
+        canvas.addEventListener('pointercancel', (e) => {
+            if (e.pointerId === pointerId) {
+                pointerId = null;
+                pointerX = -1;
+            }
+        });
+
+        // Keyboard
+        let keys = {};
+        document.addEventListener('keydown', (e) => {
+            handleFirstInteraction();
+            keys[e.code] = true;
+            if (e.code === 'KeyM') toggleMusic();
+            if (gameOver && e.code === 'KeyR') resetGame();
+        });
+        document.addEventListener('keyup', (e) => keys[e.code] = false);
+
+        // ------------------- RESIZE & ORIENTATION -------------------
+        function resizeCanvas() {
+            const dpr = Math.min(window.devicePixelRatio || 1, 2); // Cap for perf
+            const scaleX = window.innerWidth / GAME_WIDTH;
+            const scaleY = window.innerHeight / GAME_HEIGHT;
+            const scale = Math.min(scaleX, scaleY);
+
+            const displayW = GAME_WIDTH * scale;
+            const displayH = GAME_HEIGHT * scale;
+
+            canvas.style.width = `${displayW}px`;
+            canvas.style.height = `${displayH}px`;
+            canvas.style.left = `${(window.innerWidth - displayW) / 2}px`;
+            canvas.style.top = `${(window.innerHeight - displayH) / 2}px`;
+
+            // Crisp buffer
+            canvas.width = GAME_WIDTH * dpr;
+            canvas.height = GAME_HEIGHT * dpr;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+
+        function updateOrientation() {
+            isPortraitMode = window.innerHeight > window.innerWidth;
+            rotateScreen.style.display = isPortraitMode ? 'flex' : 'none';
+            resizeCanvas();
+        }
+
+        window.addEventListener('resize', updateOrientation);
+        window.addEventListener('orientationchange', () => setTimeout(updateOrientation, 200));
 
         // ------------------- GAME SETTINGS -------------------
         const playerWidth = 120;
@@ -117,30 +260,21 @@
         const powerupWidth = 25;
         const powerupHeight = 12;
         const powerupSpeed = 1.5;
-        const powerupDropChance = 0.05; // 5% chance when alien dies
-        const shieldDuration = 10000; // 10 seconds
+        const powerupDropChance = 0.15;
+        const shieldDuration = 10000;
         const alienRows = 5;
         const alienCols = 9;
         let alienSpeed = 1;
         const bulletSpeed = 5;
-        const fireRateMs = 120; // ms between shots (tweak for feel: lower = faster)
+        const fireRateMs = 120;
+        const lerpSpeed = 0.25; // Mobile move smoothness
 
         // ------------------- GAME STATE -------------------
-        let player = { 
-            x: canvas.width / 2 - playerWidth / 2, 
-            y: canvas.height - playerHeight, 
-            width: playerWidth, 
-            height: playerHeight, 
-            visibleWidth, 
-            visibleHeight, 
-            speed: 5,
-            shieldActive: false,
-            shieldEndTime: 0
-        };
+        let player = { };
         let aliens = [];
         let playerBullets = [];
         let alienBullets = [];
-        let powerups = []; // NEW: Power-up pickups
+        let powerups = [];
         let score = 0;
         let lives = 3;
         let alienDirection = 1;
@@ -149,7 +283,21 @@
         let levelTransition = false;
         let lastFireTime = 0;
 
-        // ------------------- INITIALISE ALIENS -------------------
+        // ------------------- INIT -------------------
+        function initPlayer() {
+            player = { 
+                x: GAME_WIDTH / 2 - playerWidth / 2, 
+                y: GAME_HEIGHT - playerHeight, 
+                width: playerWidth, 
+                height: playerHeight, 
+                visibleWidth, 
+                visibleHeight, 
+                speed: 5,
+                shieldActive: false,
+                shieldEndTime: 0 
+            };
+        }
+
         function initAliens() {
             aliens = [];
             for (let row = 0; row < alienRows; row++) {
@@ -168,23 +316,12 @@
             }
         }
 
-        // ------------------- RESET GAME -------------------
         function resetGame() {
-            player = { 
-                x: canvas.width / 2 - playerWidth / 2, 
-                y: canvas.height - playerHeight, 
-                width: playerWidth, 
-                height: playerHeight, 
-                visibleWidth, 
-                visibleHeight, 
-                speed: 5,
-                shieldActive: false,
-                shieldEndTime: 0 
-            };
+            initPlayer();
             aliens = [];
             playerBullets = [];
             alienBullets = [];
-            powerups = []; // NEW
+            powerups = [];
             score = 0;
             lives = 3;
             alienDirection = 1;
@@ -195,10 +332,10 @@
             lastFireTime = 0;
             gameOverText.style.display = 'none';
             initAliens();
-            gameLoop();
+            if (!isPortraitMode) gameLoop();
         }
 
-        // ------------------- NEW: POWER-UPS -------------------
+        // Power-ups
         function activateShield() {
             player.shieldActive = true;
             player.shieldEndTime = Date.now() + shieldDuration;
@@ -211,30 +348,24 @@
         }
 
         function updatePowerups() {
-            powerups = powerups.filter(pu => pu.y < canvas.height);
-            powerups.forEach(pu => {
-                pu.y += powerupSpeed;
-            });
+            powerups = powerups.filter(pu => pu.y < GAME_HEIGHT);
+            powerups.forEach(pu => pu.y += powerupSpeed);
         }
 
         function drawPowerups() {
-            ctx.fillStyle = 'rgba(0, 255, 255, 0.8)'; // Cyan glow
-            powerups.forEach(pu => {
-                ctx.fillRect(pu.x, pu.y, pu.width, pu.height);
-            });
+            ctx.fillStyle = 'rgba(0, 255, 255, 0.8)';
+            powerups.forEach(pu => ctx.fillRect(pu.x, pu.y, pu.width, pu.height));
             ctx.fillStyle = 'black';
             ctx.font = 'bold 10px Arial';
             ctx.textAlign = 'center';
-            powerups.forEach(pu => {
-                ctx.fillText('SHLD', pu.x + pu.width / 2, pu.y + pu.height - 2);
-            });
+            powerups.forEach(pu => ctx.fillText('SHLD', pu.x + pu.width / 2, pu.y + pu.height - 2));
             ctx.textAlign = 'left';
-            ctx.fillStyle = 'white'; // Reset
+            ctx.fillStyle = 'white';
         }
 
         function drawShield() {
             if (player.shieldActive) {
-                ctx.fillStyle = '#00FFFF'; // Cyan
+                ctx.fillStyle = '#00FFFF';
                 ctx.font = 'bold 20px Arial';
                 ctx.textAlign = 'center';
                 ctx.fillText('----------', player.x + player.width / 2, player.y - 15);
@@ -242,42 +373,35 @@
             }
         }
 
-        // ------------------- INPUT -------------------
-        let keys = {};
-        document.addEventListener('keydown', (e) => {
-            keys[e.code] = true;
-
-            // Unlock audio on first user interaction
-            if (isFirstInteraction && ['ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
-                tryPlayMusic();
-                isFirstInteraction = false;
+        // ------------------- PLAYER UPDATE (MOBILE + KEYBOARD UNIFIED) -------------------
+        function updatePlayer() {
+            // Movement
+            if (pointerId !== null && pointerX < GAME_WIDTH / 2) {
+                // Mobile: Touch left half -> smooth move to touch pos
+                const targetX = Math.max(0, Math.min(GAME_WIDTH - player.width, pointerX - player.width / 2));
+                player.x += (targetX - player.x) * lerpSpeed;
+            } else {
+                // Keyboard
+                if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
+                if (keys['ArrowRight'] && player.x < GAME_WIDTH - player.width) player.x += player.speed;
             }
 
-            if (e.code === 'KeyM') toggleMusic();
-            if (gameOver && e.code === 'KeyR') resetGame();
-        });
-        document.addEventListener('keyup', e => keys[e.code] = false);
-
-        // ------------------- PLAYER UPDATE (FIXED: Timer-based firing + sound per bullet) -------------------
-        function updatePlayer() {
-            if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
-            if (keys['ArrowRight'] && player.x < canvas.width - player.width) player.x += player.speed;
-
-            // FIXED: Timer-based firing (works perfectly while holding Space)
+            // Shooting (unified: Space OR mobile right half)
             const now = Date.now();
-            if (keys['Space'] && now - lastFireTime > fireRateMs) {
+            const wantsShoot = keys['Space'] || (pointerId !== null && pointerX >= GAME_WIDTH / 2);
+            if (wantsShoot && now - lastFireTime > fireRateMs) {
                 playerBullets.push({
                     x: player.x + playerWidth / 2 - bulletWidth / 2,
                     y: player.y,
                     width: bulletWidth,
                     height: bulletHeight
                 });
-                playShotSound(); // Sound for EVERY bullet
+                playShotSound();
                 lastFireTime = now;
             }
         }
 
-        // ------------------- REST OF THE GAME -------------------
+        // ------------------- DRAW -------------------
         function drawPlayer() {
             if (playerSprite.complete && playerSprite.naturalWidth !== 0) {
                 ctx.drawImage(playerSprite, player.x, player.y, player.width, player.height);
@@ -314,20 +438,21 @@
         function drawUI() {
             ctx.fillStyle = 'white';
             ctx.font = '20px Arial';
-            ctx.fillText(`Score: ${score}`, 10, 20);
-            ctx.fillText(`Lives: ${lives}`, canvas.width - 80, 20);
+            ctx.fillText(`Score: ${score}`, 10, 25);
+            ctx.fillText(`Lives: ${lives}`, GAME_WIDTH - 100, 25);
         }
 
+        // ------------------- UPDATES -------------------
         function updateAliens() {
             if (levelTransition) return;
-            let minX = canvas.width, maxX = 0;
+            let minX = Infinity, maxX = -Infinity;
             aliens.forEach(a => {
                 if (a.alive) {
-                    if (a.x < minX) minX = a.x;
-                    if (a.x + a.width > maxX) maxX = a.x + a.width;
+                    minX = Math.min(minX, a.x);
+                    maxX = Math.max(maxX, a.x + a.width);
                 }
             });
-            if (maxX > canvas.width - 10 || minX < 10) {
+            if (maxX > GAME_WIDTH - 10 || minX < 10) {
                 alienDirection *= -1;
                 alienMoveDown = true;
             }
@@ -346,29 +471,25 @@
         function updateBullets() {
             playerBullets = playerBullets.filter(b => b.y > 0);
             playerBullets.forEach(b => b.y -= bulletSpeed);
-            alienBullets = alienBullets.filter(b => b.y < canvas.height);
+            alienBullets = alienBullets.filter(b => b.y < GAME_HEIGHT);
             alienBullets.forEach(b => b.y += bulletSpeed);
         }
 
         function checkCollisions() {
-            // NEW: Power-up pickup (reverse loop for safe splicing)
+            // Power-up pickup
             for (let i = powerups.length - 1; i >= 0; i--) {
                 const pu = powerups[i];
-                if (pu.x < player.x + player.width &&
-                    pu.x + pu.width > player.x &&
-                    pu.y < player.y + player.height &&
-                    pu.y + pu.height > player.y) {
+                if (pu.x < player.x + player.width && pu.x + pu.width > player.x &&
+                    pu.y < player.y + player.height && pu.y + pu.height > player.y) {
                     activateShield();
                     powerups.splice(i, 1);
                 }
             }
 
-            // Player collision with alien bullets (SHIELD PROTECTS!)
-            alienBullets.forEach(bullet => {
-                if (bullet.x < (player.x + 23) + player.visibleWidth && 
-                    bullet.x + bullet.width > (player.x + 23) &&
-                    bullet.y < (player.y + 44) + player.visibleHeight && 
-                    bullet.y + bullet.height > (player.y + 44)) {
+            // Alien bullets vs player
+            alienBullets.forEach(b => {
+                if (b.x < player.x + 23 + player.visibleWidth && b.x + bulletWidth > player.x + 23 &&
+                    b.y < player.y + 44 + player.visibleHeight && b.y + bulletHeight > player.y + 44) {
                     if (!player.shieldActive) {
                         lives--;
                         if (lives <= 0) {
@@ -376,32 +497,26 @@
                             gameOverText.style.display = 'block';
                         }
                     }
-                    // Destroy bullet regardless
-                    bullet.y = canvas.height + 10;
+                    b.y = GAME_HEIGHT + 10;
                 }
             });
 
-            // Alien collision with player bullets (DROP POWER-UP!)
+            // Player bullets vs aliens
             playerBullets.forEach(b => {
-                aliens.forEach(alien => {
-                    if (alien.alive && 
-                        b.x < alien.x + alien.width && 
-                        b.x + b.width > alien.x &&
-                        b.y < alien.y + alien.height && 
-                        b.y + b.height > alien.y) {
-                        alien.hits--;
+                aliens.forEach(a => {
+                    if (a.alive && b.x < a.x + a.width && b.x + b.width > a.x &&
+                        b.y < a.y + a.height && b.y + b.height > a.y) {
+                        a.hits--;
                         b.y = -10;
-                        if (alien.hits <= 0) {
-                            alien.alive = false;
-                            score += alien.sprite === glowtubeSprite ? 20 : 10;
-                            // NEW: 5% chance to drop shield power-up
+                        if (a.hits <= 0) {
+                            a.alive = false;
+                            score += a.sprite === glowtubeSprite ? 20 : 10;
                             if (Math.random() < powerupDropChance) {
                                 powerups.push({
-                                    x: alien.x + alien.width / 2 - powerupWidth / 2,
-                                    y: alien.y + alien.height / 2,
+                                    x: a.x + a.width / 2 - powerupWidth / 2,
+                                    y: a.y,
                                     width: powerupWidth,
-                                    height: powerupHeight,
-                                    type: 'shield'
+                                    height: powerupHeight
                                 });
                             }
                         }
@@ -409,7 +524,7 @@
                 });
             });
 
-            // Game over if aliens reach player
+            // Aliens reach bottom
             aliens.forEach(a => {
                 if (a.alive && a.y + a.height > player.y) {
                     gameOver = true;
@@ -422,53 +537,56 @@
             levelTransition = true;
             alienBullets = [];
             playerBullets = [];
-            powerups = []; // NEW: Clear power-ups on level reset
+            powerups = [];
             setTimeout(() => {
                 initAliens();
-                alienSpeed *= 2;
+                alienSpeed *= 1.5; // Slightly slower ramp for mobile?
                 levelTransition = false;
             }, 500);
         }
 
+        // ------------------- GAME LOOP -------------------
         function gameLoop() {
-            if (gameOver) return;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (isPortraitMode || gameOver) return;
+
+            ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
             updatePlayer();
             updateAliens();
             updateBullets();
-            updatePowerups(); // NEW
-            updateShield(); // NEW
+            updatePowerups();
+            updateShield();
             checkCollisions();
 
             drawPlayer();
-            drawShield(); // NEW: Shield visual above ship
+            drawShield();
             drawAliens();
             drawBullets();
-            drawPowerups(); // NEW
+            drawPowerups();
             drawUI();
 
-            if (aliens.every(a => !a.alive) && !levelTransition) resetLevel();
+            if (aliens.every(a => !a.alive) && !levelTransition) {
+                resetLevel();
+            }
 
             requestAnimationFrame(gameLoop);
         }
 
-        // ------------------- IMAGE LOADING -------------------
+        // ------------------- IMAGE LOADING & START -------------------
         let imagesLoaded = 0;
         const totalImages = 3;
 
         function imageLoaded() {
             imagesLoaded++;
             if (imagesLoaded === totalImages) {
+                initPlayer();
                 initAliens();
-                gameLoop();
+                updateOrientation(); // Initial setup
+                if (!isPortraitMode) gameLoop();
             }
         }
 
-        playerSprite.onload = imageLoaded;
-        mainbaseSprite.onload = imageLoaded;
-        glowtubeSprite.onload = imageLoaded;
-
+        playerSprite.onload = mainbaseSprite.onload = glowtubeSprite.onload = imageLoaded;
         playerSprite.onerror = mainbaseSprite.onerror = glowtubeSprite.onerror = imageLoaded;
     </script>
 </body>
