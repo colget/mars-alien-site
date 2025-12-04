@@ -2,211 +2,212 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <title>Mars Invaders</title>
 <style>
-    *{margin:0;padding:0;box-sizing:border-box}
-    body{background:#000;overflow:hidden;height:100vh;width:100vw}
-    canvas{position:absolute;border:2px solid #fff;background:url('news.jpg') center/cover no-repeat}
-    #gameOver{position:absolute;color:#ff4444;font-size:clamp(30px,8vw,50px);text-align:center;
-              left:50%;top:50%;transform:translate(-50%,-50%);z-index:10;display:none;
-              text-shadow:2px 2px 6px #000;white-space:pre-line}
-    #rotate{position:fixed;inset:0;background:#000;color:#fff;display:none;
-            flex-direction:column;justify-content:center;align-items:center;z-index:100;
-            font-size:clamp(24px,6vw,36px)}
-    #rotate .icon{font-size:80px;animation:s 2s linear infinite}
-    @keyframes s{to{transform:rotate(360deg)}}
-    #controls{position:absolute;bottom:0;left:0;right:0;height:200px;display:none;z-index:20;pointer-events:none}
-    #joy{position:absolute;left:30px;bottom:30px;width:140px;height:140px;
-         background:rgba(255,255,255,0.15);border:4px solid rgba(255,255,255,0.4);
-         border-radius:50%;pointer-events:auto}
-    #joy::before{content:'';position:absolute;top:50%;left:50%;width:60px;height:60px;
-                 background:rgba(255,255,255,0.6);border-radius:50%;transform:translate(-50%,-50%)}
-    #joy.active::before{background:#0f0;box-shadow:0 0 20px #0f0}
-    #fire{position:absolute;right:40px;bottom:40px;width:110px;height:110px;
-          background:rgba(255,0,0,0.35);border:5px solid rgba(255,100,100,0.9);
-          border-radius:50%;pointer-events:auto;color:white;font:bold 18px Arial;
-          text-align:center;line-height:110px;text-shadow:2px 2px 4px #000}
-    #fire:active{background:rgba(255,50,50,0.7)}
-    audio{display:none}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;overflow:hidden;height:100vh;width:100vw;font-family:Arial}
+canvas{position:absolute;border:2px solid #fff;background:url('news.jpg') center/cover no-repeat}
+#over{position:absolute;color:#f44;font:bold clamp(30px,8vw,50px) Arial;text-align:center;
+      left:50%;top:50%;transform:translate(-50%,-50%);z-index:10;display:none;text-shadow:0 0 10px #000}
+#rotate{position:fixed;inset:0;background:#000;color:#fff;display:flex;flex-direction:column;
+        justify-content:center;align-items:center;z-index:100;font-size:clamp(24px,6vw,36px);display:none}
+#rotate svg{width:80px;height:80px;animation:r 2s linear infinite}
+@keyframes r{to{transform:rotate(360deg)}}
+
+#controls{position:fixed;bottom:0;left:0;right:0;height:200px;display:none;pointer-events:none;z-index:20}
+#joy{position:absolute;left:30px;bottom:30px;width:140px;height:140px;background:rgba(255,255,255,.15);
+     border:4px solid rgba(255,255,255,.5);border-radius:50%;pointer-events:auto}
+#joy::before{content:'';position:absolute;inset:50%;width:60px;height:60px;margin:-30px;
+             background:#fff;border-radius:50%;transition:.1s}
+#joy.touch::before{background:#0f0;box-shadow:0 0 25px #0f0}
+#fire{position:absolute;right:40px;bottom:40px;width:110px;height:110px;background:rgba(255,0,0,.4);
+      border:5px solid #faa;border-radius:50%;pointer-events:auto;color:#fff;font:bold 18px Arial;
+      text-align:center;line-height:110px;text-shadow:2px 2px 6px #000}
+#fire:active{background:rgba(255,50,50,.8)}
+audio{display:none}
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
-<div id="gameOver">GAME OVER<br>Tap to Restart</div>
-<div id="rotate"><h1>Rotate to Landscape</h1><div class="icon">Rotate</div></div>
+<div id="over">GAME OVER<br>Tap to Restart</div>
+<div id="rotate"><div>Rotate to Landscape</div>
+<svg viewBox="0 0 100 100"><path d="M10 50 A40 40 0 1 1 90 50" fill="none" stroke="#fff" stroke-width="8"/>
+     <path d="M90 50 L70 40 M90 50 L70 60" fill="#fff"/></svg></div>
 
 <div id="controls">
-    <div id="joy"></div>
-    <div id="fire">FIRE</div>
+  <div id="joy"></div>
+  <div id="fire">FIRE</div>
 </div>
 
 <audio id="bg" loop preload="auto"><source src="entertainer.mp3" type="audio/mpeg"></audio>
 <audio id="shot" preload="auto"><source src="shot.mp3" type="audio/mpeg"></audio>
 
 <script>
+// Core
 const canvas=document.getElementById('c'), ctx=canvas.getContext('2d');
 const W=800, H=600;
-const gameOverDiv=document.getElementById('gameOver');
-const rotateDiv=document.getElementById('rotate');
-const controlsDiv=document.getElementById('controls');
+const over=document.getElementById('over');
+const rotate=document.getElementById('rotate');
+const controls=document.getElementById('controls');
 const joy=document.getElementById('joy');
 const fire=document.getElementById('fire');
 const bg=document.getElementById('bg');
 const shot=document.getElementById('shot');
 
-const playerImg=new Image(); playerImg.src='https://mars-alien.com/game/paddle1.png';
-const mainImg=new Image(); mainImg.src='https://mars-alien.com/game/mainbase.png';
-const glowImg=new Image(); glowImg.src='https://mars-alien.com/game/glowtube.png';
-
 const isMobile=/Mobi|Android|iPhone|iPad|iPod/.test(navigator.userAgent);
-let portrait=true, unlocked=false, joyActive=false, joyId=null, joyDelta=0, firing=false;
+let portrait=true, unlocked=false, joyTouch=null, joyX=0, firing=false;
 
-// Unlock audio
-function unlock(){if(!unlocked){unlocked=true;bg.play().catch(()=>{});shot.play().catch(()=>{});shot.pause();}}
+// Images
+const pImg=new Image(); pImg.src='https://mars-alien.com/game/paddle1.png';
+const mImg=new Image(); mImg.src='https://mars-alien.com/game/mainbase.png';
+const gImg=new Image(); gImg.src='https://mars-alien.com/game/glowtube.png';
 
-// Joystick
-joy.addEventListener('pointerdown',e=>{unlock();if(joyId)return;joyId=e.pointerId;joyActive=true;joy.classList.add('active');moveJoy(e);});
+// Unlock audio on first interaction
+function unlock(){if(unlocked)return;unlocked=true;bg.play().catch(()=>{});}
+
+// Joystick - fixed for continuous movement
+joy.addEventListener('pointerdown', e=>{unlock();joyTouch=e.pointerId;joy.classList.add('touch');moveJoy(e);});
 function moveJoy(e){
+    if(!joyTouch)return;
     const r=joy.getBoundingClientRect();
     const dx=e.clientX-(r.left+70);
-    const d=Math.min(70,Math.abs(dx))*Math.sign(dx);
-    joyDelta=d; joy.style.setProperty('--dx',d+'px');
+    joyX=Math.max(-70,Math.min(70,dx));
+    joy.style.setProperty('--dx',joyX+'px');
 }
-document.addEventListener('pointermove',e=>{if(e.pointerId===joyId)moveJoy(e);});
-document.addEventListener('pointerup',e=>{if(e.pointerId===joyId){joyId=null;joyActive=false;joyDelta=0;joy.classList.remove('active');joy.style.removeProperty('--dx');}});
+document.addEventListener('pointermove', e=>{if(e.pointerId===joyTouch)moveJoy(e);});
+document.addEventListener('pointerup', e=>{
+    if(e.pointerId===joyTouch){
+        joyTouch=null;joyX=0;joy.classList.remove('touch');
+        joy.style.removeProperty('--dx');
+    }
+});
 
 // Fire
-fire.addEventListener('pointerdown',e=>{e.preventDefault();unlock();firing=true;});
-fire.addEventListener('pointerup',()=>{firing=false;});
-fire.addEventListener('pointercancel',()=>{firing=false;});
+fire.addEventListener('pointerdown', e=>{e.preventDefault();unlock();firing=true;});
+fire.addEventListener('pointerup', ()=>{firing=false;});
+fire.addEventListener('pointercancel', ()=>{firing=false;});
 
 // Restart
-document.addEventListener('pointerdown',()=>{if(gameOver)resetGame();});
+document.addEventListener('pointerdown', ()=>{if(gameOver)reset();});
 
 // Keyboard
 const keys={};
-document.addEventListener('keydown',e=>{unlock();keys[e.code]=true;if(gameOver&&e.code==='KeyR')resetGame();});
-document.addEventListener('keyup',e=>keys[e.code]=false);
+document.addEventListener('keydown', e=>{unlock();keys[e.code]=true;if(gameOver&&e.code==='KeyR')reset();});
+document.addEventListener('keyup', e=>keys[e.code]=false);
 
-// Resize
+// Resize & orientation
 function resize(){
     const dpr=Math.min(window.devicePixelRatio||1,2);
-    const scale=Math.min(innerWidth/W,innerHeight/H);
-    const w=W*scale, h=H*scale;
+    const s=Math.min(innerWidth/W,innerHeight/H);
+    const w=W*s, h=H*s;
     canvas.style.width=w+'px';canvas.style.height=h+'px';
     canvas.style.left=(innerWidth-w)/2+'px';canvas.style.top=(innerHeight-h)/2+'px';
     canvas.width=W*dpr;canvas.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);
     portrait=innerHeight>innerWidth;
-    rotateDiv.style.display=portrait?'flex':'none';
-    controlsDiv.style.display=(isMobile&&!portrait)?'block':'none';
+    rotate.style.display=portrait?'flex':'none';
+    controls.style.display=(isMobile&&!portrait)?'block':'none';
 }
 window.addEventListener('resize',resize);
 window.addEventListener('orientationchange',()=>setTimeout(resize,300));
 
-// Game variables
-let player, aliens=[], pBullets=[], aBullets=[], powerups=[];
-let score=0, lives=3, dir=1, down=false, gameOver=false, trans=false, alienSpeed=1, lastShot=0;
+// Game state
+let player,aliens=[],pBul=[],aBul=[],pw=[];
+let score=0,lives=3,dir=1,down=false,gameOver=false,trans=false,speed=1,lastShot=0;
 
-function initPlayer(){player={x:W/2-60,y:H-120,w:120,h:120,vw:73,vh:32,speed:6,shield:false,shieldEnd:0};}
+function initPlayer(){player={x:W/2-60,y:H-120,w:120,h:120,vw:73,vh:32,s:6,sh:false,shEnd:0};}
 function initAliens(){
     aliens=[];for(let r=0;r<5;r++)for(let c=0;c<9;c++){
-        const g=Math.random()>0.5;
-        aliens.push({x:c*64+50,y:r*54+30,w:54,h:27,alive:true,sprite:g?glowImg:mainImg,hits:g?2:1});
+        const g=Math.random()>.5;
+        aliens.push({x:c*64+50,y:r*54+30,w:54,h:27,a:true,s:g?gImg:mImg,h:g?2:1});
     }
 }
-function resetGame(){
-    initPlayer();initAliens();pBullets=[];aBullets=[];powerups=[];
-    score=0;lives=3;dir=1;down=false;gameOver=false;trans=false;alienSpeed=1;lastShot=0;
-    gameOverDiv.style.display='none';
+function reset(){
+    initPlayer();initAliens();pBul=[];aBul=[];pw=[];
+    score=0;lives=3;dir=1;down=false;gameOver=false;trans=false;speed=1;lastShot=0;
+    over.style.display='none';
     requestAnimationFrame(loop);
 }
-function playShot(){const s=shot.cloneNode();s.volume=0.5;s.play().catch(()=>{});}
+function pew(){const s=shot.cloneNode();s.volume=.5;s.play().catch(()=>{});}
 
-// Game loop functions
+// Game loop
 function updatePlayer(){
-    if(joyActive) player.x=Math.max(0,Math.min(W-120,W/2-60+joyDelta*6));
-    else{if(keys['ArrowLeft'])player.x-=player.speed;if(keys['ArrowRight'])player.x+=player.speed;}
+    if(joyTouch)player.x=Math.max(0,Math.min(W-120,W/2-60+joyX*6));
+    else{if(keys.ArrowLeft)player.x-=player.s;if(keys.ArrowRight)player.x+=player.s;}
     player.x=Math.max(0,Math.min(W-120,player.x));
-    const now=Date.now();
-    if((firing||keys['Space'])&&now-lastShot>110){
-        pBullets.push({x:player.x+60-2.5,y:player.y,w:5,h:10});playShot();lastShot=now;
+    const n=Date.now();
+    if((firing||keys.Space)&&n-lastShot>110){
+        pBul.push({x:player.x+60-2.5,y:player.y,w:5,h:10});pew();lastShot=n;
     }
 }
 function updateAliens(){
     if(trans)return;
-    let minX=Infinity,maxX=0;
-    aliens.forEach(a=>{if(a.alive){minX=Math.min(minX,a.x);maxX=Math.max(maxX,a.x+a.w);}});
-    if(maxX>W-10||minX<10){dir*=-1;down=true;}
-    aliens.forEach(a=>{if(a.alive){
-        a.x+=alienSpeed*dir;if(down)a.y+=10;
-        if(Math.random()<0.001&&aBullets.length<3)
-            aBullets.push({x:a.x+a.w/2-2.5,y:a.y+a.h,w:5,h:10});
+    let min=9999,max=0;
+    aliens.forEach(a=>{if(a.a){min=Math.min(min,a.x);max=Math.max(max,a.x+a.w);}});
+    if(max>W-10||min<10){dir=-dir;down=true;}
+    aliens.forEach(a=>{if(a.a){
+        a.x+=speed*dir;if(down)a.y+=10;
+        if(Math.random()<0.001&&aBul.length<3)aBul.push({x:a.x+a.w/2-2.5,y:a.y+a.h,w:5,h:10});
     }});down=false;
 }
 function updateBullets(){
-    pBullets=pBullets.filter(b=>b.y>0);pBullets.forEach(b=>b.y-=5);
-    aBullets=aBullets.filter(b=>b.y<H);aBullets.forEach(b=>b.y+=5);
+    pBul=pBul.filter(b=>b.y>0);pBul.forEach(b=>b.y-=5);
+    aBul=aBul.filter(b=>b.y<H);aBul.forEach(b=>b.y+=5);
 }
-function updatePowerups(){powerups=powerups.filter(p=>p.y<H);powerups.forEach(p=>p.y+=1.5);}
-function updateShield(){if(player.shield&&Date.now()>player.shieldEnd)player.shield=false;}
-function checkCollisions(){
-    // power-ups
-    for(let i=powerups.length-1;i>=0;i--){
-        const p=powerups[i];
+function updatePw(){pw=pw.filter(p=>p.y<H);pw.forEach(p=>p.y+=1.5);}
+function updateShield(){if(player.sh&&Date.now()>player.shEnd)player.sh=false;}
+function collisions(){
+    // Power-up
+    for(let i=pw.length-1;i>=0;i--){
+        const p=pw[i];
         if(p.x<player.x+120&&p.x+25>player.x&&p.y<player.y+120&&p.y+12>player.y){
-            player.shield=true;player.shieldEnd=Date.now()+10000;powerups.splice(i,1);
+            player.sh=true;player.shEnd=Date.now()+10000;pw.splice(i,1);
         }
     }
-    // alien bullets
-    aBullets.forEach(b=>{
+    // Alien bullets
+    aBul.forEach(b=>{
         if(b.x<player.x+23+73&&b.x+5>player.x+23&&b.y<player.y+44+32&&b.y+10>player.y+44){
-            if(!player.shield){lives--;if(lives<=0){gameOver=true;gameOverDiv.style.display='block';}}
+            if(!player.sh){lives--;if(lives<=0){gameOver=true;over.style.display='block';}}
             b.y=H+10;
         }
     });
-    // player bullets
-    pBullets.forEach(b=>{
+    // Player bullets
+    pBul.forEach(b=>{
         aliens.forEach(a=>{
-            if(a.alive&&b.x<a.x+a.w&&b.x+5>a.x&&b.y<a.y+a.h&&b.y+10>a.y){
-                a.hits--;b.y=-10;
-                if(a.hits<=0){
-                    a.alive=false;score+=a.sprite===glowImg?20:10;
-                    if(Math.random()<0.15)powerups.push({x:a.x+a.w/2-12.5,y:a.y,w:25,h:12});
+            if(a.a&&b.x<a.x+a.w&&b.x+5>a.x&&b.y<a.y+a.h&&b.y+10>a.y){
+                a.h--;b.y=-10;
+                if(a.h<=0){a.a=false;score+=a.s===gImg?20:10;
+                    if(Math.random()<0.15)pw.push({x:a.x+a.w/2-12.5,y:a.y,w:25,h:12});
                 }
             }
         });
     });
-    aliens.forEach(a=>{if(a.alive&&a.y+a.h>player.y){gameOver=true;gameOverDiv.style.display='block';}});
+    aliens.forEach(a=>{if(a.a&&a.y+a.h>player.y){gameOver=true;over.style.display='block';}});
 }
-function nextLevel(){trans=true;aBullets=[];pBullets=[];powerups=[];
-    setTimeout(()=>{initAliens();alienSpeed*=1.5;trans=false;},500);}
+function next(){trans=true;aBul=[];pBul=[];pw=[];
+    setTimeout(()=>{initAliens();speed*=1.5;trans=false;},500);}
 
-// Draw functions
-function drawPlayer(){if(playerImg.complete)ctx.drawImage(playerImg,player.x,player.y,120,120);}
-function drawAliens(){aliens.forEach(a=>{if(a.alive&&a.sprite&&a.sprite.complete)ctx.drawImage(a.sprite,a.x,a.y,a.w,a.h);});}
-function drawBullets(){ctx.fillStyle='#0f0';pBullets.forEach(b=>ctx.fillRect(b.x,b.y,5,10));
-                      ctx.fillStyle='#f00';aBullets.forEach(b=>ctx.fillRect(b.x,b.y,5,10));}
-function drawPowerups(){ctx.fillStyle='rgba(0,255,255,0.8)';powerups.forEach(p=>ctx.fillRect(p.x,p.y,25,12));}
-function drawShield(){if(player.shield){ctx.fillStyle='#0ff';ctx.font='bold 20px Arial';ctx.textAlign='center';
-                      ctx.fillText('----------',player.x+60,player.y-15);ctx.textAlign='left';}}
-function drawUI(){ctx.fillStyle='#fff';ctx.font='20px Arial';
-                  ctx.fillText('Score: '+score,10,25);ctx.fillText('Lives: '+lives,W-110,25);}
-
-function loop(){
-    if(portrait||gameOver)return;
-    ctx.clearRect(0,0,W,H);
-    updatePlayer();updateAliens();updateBullets();updatePowerups();updateShield();checkCollisions();
-    drawPlayer();drawShield();drawAliens();drawBullets();drawPowerups();drawUI();
-    if(aliens.every(a=>!a.alive)&&!trans)nextLevel();
-    requestAnimationFrame(loop);
+// Draw
+function draw(){ctx.clearRect(0,0,W,H);
+    updatePlayer();updateAliens();updateBullets();updatePw();updateShield();collisions();
+    if(pImg.complete)ctx.drawImage(pImg,player.x,player.y,120,120);
+    aliens.forEach(a=>{if(a.a&&a.s&&a.s.complete)ctx.drawImage(a.s,a.x,a.y,a.w,a.h);});
+    ctx.fillStyle='#0f0';pBul.forEach(b=>ctx.fillRect(b.x,b.y,5,10));
+    ctx.fillStyle='#f00';aBul.forEach(b=>ctx.fillRect(b.x,b.y,5,10));
+    ctx.fillStyle='rgba(0,255,255,.8)';pw.forEach(p=>ctx.fillRect(p.x,p.y,25,12));
+    if(player.sh){ctx.fillStyle='#0ff';ctx.font='bold 20px Arial';ctx.textAlign='center';
+                  ctx.fillText('----------',player.x+60,player.y-15);ctx.textAlign='left';}
+    ctx.fillStyle='#fff';ctx.font='20px Arial';
+    ctx.fillText('Score: '+score,10,25);ctx.fillText('Lives: '+lives,W-110,25);
+    if(aliens.every(a=>!a.a)&&!trans)next();
+    if(!portrait&&!gameOver)requestAnimationFrame(draw);
 }
 
-// Start when images are ready
+// Start when images ready
 let loaded=0;
-function imgOk(){if(++loaded===3){resize();resetGame();}}
-playerImg.onload=mainImg.onload=glowImg.onload=imgOk;
-playerImg.onerror=mainImg.onerror=glowImg.onerror=imgOk;
+function ok(){if(++loaded===3){resize();reset();}}
+pImg.onload=mImg.onload=gImg.onload=ok;
+pImg.onerror=mImg.onerror=gImg.onerror=ok;
 
 resize();
 </script>
