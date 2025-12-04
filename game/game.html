@@ -39,13 +39,13 @@
     <div id="gameOver">Game Over - Press R to Restart</div>
 
     <!-- Background music -->
-    <audio id="backgroundMusic" loop>
+    <audio id="backgroundMusic" loop preload="auto">
         <source src="entertainer.mp3" type="audio/mpeg">
         Your browser does not support the audio element.
     </audio>
 
     <!-- Shooting sound -->
-    <audio id="shotSound">
+    <audio id="shotSound" preload="auto">
         <source src="shot.mp3" type="audio/mpeg">
         Your browser does not support the audio element.
     </audio>
@@ -55,7 +55,7 @@
         const ctx = canvas.getContext('2d');
         const gameOverText = document.getElementById('gameOver');
         const backgroundMusic = document.getElementById('backgroundMusic');
-        const shotSound = document.getElementById('shotSound'); // NEW
+        const shotSound = document.getElementById('shotSound');
 
         // Load sprite images
         const playerSprite = new Image();
@@ -98,10 +98,11 @@
             setTimeout(() => isToggling = false, 200);
         }
 
-        // Simple function to play the shot sound (resets to beginning each time)
+        // FIXED: Clone audio each time for crisp rapid-fire sounds (no overlap/throttling)
         function playShotSound() {
-            shotSound.currentTime = 0;      // rewind to start (allows rapid fire)
-            shotSound.play().catch(err => console.log("Shot sound blocked (probably no user interaction yet)"));
+            const audio = shotSound.cloneNode(true);
+            audio.volume = 0.5; // Optional: Adjust volume if too loud
+            audio.play().catch(err => console.log('Shot play failed:', err));
         }
 
         // ------------------- GAME SETTINGS -------------------
@@ -117,6 +118,7 @@
         const alienCols = 9;
         let alienSpeed = 1;
         const bulletSpeed = 5;
+        const fireRateMs = 120; // ms between shots (tweak for feel: lower = faster)
 
         // ------------------- GAME STATE -------------------
         let player = { x: canvas.width / 2 - playerWidth / 2, y: canvas.height - playerHeight, width: playerWidth, height: playerHeight, visibleWidth, visibleHeight, speed: 5 };
@@ -129,6 +131,7 @@
         let alienMoveDown = false;
         let gameOver = false;
         let levelTransition = false;
+        let lastFireTime = 0; // NEW: Precise firing timer
 
         // ------------------- INITIALISE ALIENS -------------------
         function initAliens() {
@@ -162,6 +165,7 @@
             gameOver = false;
             levelTransition = false;
             alienSpeed = 1;
+            lastFireTime = 0; // Reset firing timer
             gameOverText.style.display = 'none';
             initAliens();
             gameLoop();
@@ -183,24 +187,26 @@
         });
         document.addEventListener('keyup', e => keys[e.code] = false);
 
-        // ------------------- PLAYER UPDATE (with shooting sound) -------------------
+        // ------------------- PLAYER UPDATE (FIXED: Timer-based firing + sound per bullet) -------------------
         function updatePlayer() {
             if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
             if (keys['ArrowRight'] && player.x < canvas.width - player.width) player.x += player.speed;
 
-            // Fire bullet + play sound
-            if (keys['Space'] && !playerBullets.some(b => b.y > player.y - 50)) {
+            // FIXED: Timer-based firing (works perfectly while holding Space)
+            const now = Date.now();
+            if (keys['Space'] && now - lastFireTime > fireRateMs) {
                 playerBullets.push({
                     x: player.x + playerWidth / 2 - bulletWidth / 2,
                     y: player.y,
                     width: bulletWidth,
                     height: bulletHeight
                 });
-                playShotSound(); // PLAY SHOT SOUND HERE
+                playShotSound(); // Sound for EVERY bullet
+                lastFireTime = now;
             }
         }
 
-        // ------------------- REST OF THE GAME (unchanged except minor cleanups) -------------------
+        // ------------------- REST OF THE GAME (unchanged) -------------------
         function drawPlayer() {
             if (playerSprite.complete && playerSprite.naturalWidth !== 0) {
                 ctx.drawImage(playerSprite, player.x, player.y, player.width, player.height);
