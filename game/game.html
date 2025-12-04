@@ -114,6 +114,11 @@
         const alienHeight = 27;
         const bulletWidth = 5;
         const bulletHeight = 10;
+        const powerupWidth = 25;
+        const powerupHeight = 12;
+        const powerupSpeed = 1.5;
+        const powerupDropChance = 0.15; // 15% chance when alien dies
+        const shieldDuration = 10000; // 10 seconds
         const alienRows = 5;
         const alienCols = 9;
         let alienSpeed = 1;
@@ -121,17 +126,28 @@
         const fireRateMs = 120; // ms between shots (tweak for feel: lower = faster)
 
         // ------------------- GAME STATE -------------------
-        let player = { x: canvas.width / 2 - playerWidth / 2, y: canvas.height - playerHeight, width: playerWidth, height: playerHeight, visibleWidth, visibleHeight, speed: 5 };
+        let player = { 
+            x: canvas.width / 2 - playerWidth / 2, 
+            y: canvas.height - playerHeight, 
+            width: playerWidth, 
+            height: playerHeight, 
+            visibleWidth, 
+            visibleHeight, 
+            speed: 5,
+            shieldActive: false,
+            shieldEndTime: 0
+        };
         let aliens = [];
         let playerBullets = [];
         let alienBullets = [];
+        let powerups = []; // NEW: Power-up pickups
         let score = 0;
         let lives = 3;
         let alienDirection = 1;
         let alienMoveDown = false;
         let gameOver = false;
         let levelTransition = false;
-        let lastFireTime = 0; // NEW: Precise firing timer
+        let lastFireTime = 0;
 
         // ------------------- INITIALISE ALIENS -------------------
         function initAliens() {
@@ -154,10 +170,21 @@
 
         // ------------------- RESET GAME -------------------
         function resetGame() {
-            player = { x: canvas.width / 2 - playerWidth / 2, y: canvas.height - playerHeight, width: playerWidth, height: playerHeight, visibleWidth, visibleHeight, speed: 5 };
+            player = { 
+                x: canvas.width / 2 - playerWidth / 2, 
+                y: canvas.height - playerHeight, 
+                width: playerWidth, 
+                height: playerHeight, 
+                visibleWidth, 
+                visibleHeight, 
+                speed: 5,
+                shieldActive: false,
+                shieldEndTime: 0 
+            };
             aliens = [];
             playerBullets = [];
             alienBullets = [];
+            powerups = []; // NEW
             score = 0;
             lives = 3;
             alienDirection = 1;
@@ -165,10 +192,54 @@
             gameOver = false;
             levelTransition = false;
             alienSpeed = 1;
-            lastFireTime = 0; // Reset firing timer
+            lastFireTime = 0;
             gameOverText.style.display = 'none';
             initAliens();
             gameLoop();
+        }
+
+        // ------------------- NEW: POWER-UPS -------------------
+        function activateShield() {
+            player.shieldActive = true;
+            player.shieldEndTime = Date.now() + shieldDuration;
+        }
+
+        function updateShield() {
+            if (player.shieldActive && Date.now() > player.shieldEndTime) {
+                player.shieldActive = false;
+            }
+        }
+
+        function updatePowerups() {
+            powerups = powerups.filter(pu => pu.y < canvas.height);
+            powerups.forEach(pu => {
+                pu.y += powerupSpeed;
+            });
+        }
+
+        function drawPowerups() {
+            ctx.fillStyle = 'rgba(0, 255, 255, 0.8)'; // Cyan glow
+            powerups.forEach(pu => {
+                ctx.fillRect(pu.x, pu.y, pu.width, pu.height);
+            });
+            ctx.fillStyle = 'black';
+            ctx.font = 'bold 10px Arial';
+            ctx.textAlign = 'center';
+            powerups.forEach(pu => {
+                ctx.fillText('SHLD', pu.x + pu.width / 2, pu.y + pu.height - 2);
+            });
+            ctx.textAlign = 'left';
+            ctx.fillStyle = 'white'; // Reset
+        }
+
+        function drawShield() {
+            if (player.shieldActive) {
+                ctx.fillStyle = '#00FFFF'; // Cyan
+                ctx.font = 'bold 20px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('----------', player.x + player.width / 2, player.y - 15);
+                ctx.textAlign = 'left';
+            }
         }
 
         // ------------------- INPUT -------------------
@@ -206,7 +277,7 @@
             }
         }
 
-        // ------------------- REST OF THE GAME (unchanged) -------------------
+        // ------------------- REST OF THE GAME -------------------
         function drawPlayer() {
             if (playerSprite.complete && playerSprite.naturalWidth !== 0) {
                 ctx.drawImage(playerSprite, player.x, player.y, player.width, player.height);
@@ -280,32 +351,65 @@
         }
 
         function checkCollisions() {
-            alienBullets.forEach(b => {
-                if (b.x < (player.x + 23) + player.visibleWidth && b.x + b.width > (player.x + 23) &&
-                    b.y < (player.y + 44) + player.visibleHeight && b.y + b.height > (player.y + 44)) {
-                    lives--;
-                    b.y = canvas.height + 10;
-                    if (lives <= 0) {
-                        gameOver = true;
-                        gameOverText.style.display = 'block';
+            // NEW: Power-up pickup (reverse loop for safe splicing)
+            for (let i = powerups.length - 1; i >= 0; i--) {
+                const pu = powerups[i];
+                if (pu.x < player.x + player.width &&
+                    pu.x + pu.width > player.x &&
+                    pu.y < player.y + player.height &&
+                    pu.y + pu.height > player.y) {
+                    activateShield();
+                    powerups.splice(i, 1);
+                }
+            }
+
+            // Player collision with alien bullets (SHIELD PROTECTS!)
+            alienBullets.forEach(bullet => {
+                if (bullet.x < (player.x + 23) + player.visibleWidth && 
+                    bullet.x + bullet.width > (player.x + 23) &&
+                    bullet.y < (player.y + 44) + player.visibleHeight && 
+                    bullet.y + bullet.height > (player.y + 44)) {
+                    if (!player.shieldActive) {
+                        lives--;
+                        if (lives <= 0) {
+                            gameOver = true;
+                            gameOverText.style.display = 'block';
+                        }
                     }
+                    // Destroy bullet regardless
+                    bullet.y = canvas.height + 10;
                 }
             });
 
+            // Alien collision with player bullets (DROP POWER-UP!)
             playerBullets.forEach(b => {
-                aliens.forEach(a => {
-                    if (a.alive && b.x < a.x + a.width && b.x + b.width > a.x &&
-                        b.y < a.y + a.height && b.y + b.height > a.y) {
-                        a.hits--;
+                aliens.forEach(alien => {
+                    if (alien.alive && 
+                        b.x < alien.x + alien.width && 
+                        b.x + b.width > alien.x &&
+                        b.y < alien.y + alien.height && 
+                        b.y + b.height > alien.y) {
+                        alien.hits--;
                         b.y = -10;
-                        if (a.hits <= 0) {
-                            a.alive = false;
-                            score += a.sprite === glowtubeSprite ? 20 : 10;
+                        if (alien.hits <= 0) {
+                            alien.alive = false;
+                            score += alien.sprite === glowtubeSprite ? 20 : 10;
+                            // NEW: 15% chance to drop shield power-up
+                            if (Math.random() < powerupDropChance) {
+                                powerups.push({
+                                    x: alien.x + alien.width / 2 - powerupWidth / 2,
+                                    y: alien.y + alien.height / 2,
+                                    width: powerupWidth,
+                                    height: powerupHeight,
+                                    type: 'shield'
+                                });
+                            }
                         }
                     }
                 });
             });
 
+            // Game over if aliens reach player
             aliens.forEach(a => {
                 if (a.alive && a.y + a.height > player.y) {
                     gameOver = true;
@@ -318,6 +422,7 @@
             levelTransition = true;
             alienBullets = [];
             playerBullets = [];
+            powerups = []; // NEW: Clear power-ups on level reset
             setTimeout(() => {
                 initAliens();
                 alienSpeed *= 2;
@@ -332,11 +437,15 @@
             updatePlayer();
             updateAliens();
             updateBullets();
+            updatePowerups(); // NEW
+            updateShield(); // NEW
             checkCollisions();
 
             drawPlayer();
+            drawShield(); // NEW: Shield visual above ship
             drawAliens();
             drawBullets();
+            drawPowerups(); // NEW
             drawUI();
 
             if (aliens.every(a => !a.alive) && !levelTransition) resetLevel();
