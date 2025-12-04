@@ -1,4 +1,4 @@
-<!DOCTYPE html>     
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -37,23 +37,33 @@
 <body>
     <canvas id="gameCanvas" width="800" height="600"></canvas>
     <div id="gameOver">Game Over - Press R to Restart</div>
+
+    <!-- Background music -->
     <audio id="backgroundMusic" loop>
         <source src="entertainer.mp3" type="audio/mpeg">
         Your browser does not support the audio element.
     </audio>
+
+    <!-- Shooting sound -->
+    <audio id="shotSound">
+        <source src="shot.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const gameOverText = document.getElementById('gameOver');
         const backgroundMusic = document.getElementById('backgroundMusic');
+        const shotSound = document.getElementById('shotSound');
 
         // Load sprite images
         const playerSprite = new Image();
-        playerSprite.src = 'https://mars-alien.com/game/paddle1.png'; // Absolute path for testing
+        playerSprite.src = 'https://mars-alien.com/game/paddle1.png';
         const mainbaseSprite = new Image();
-        mainbaseSprite.src = 'https://mars-alien.com/game/mainbase.png'; // Absolute path for testing
+        mainbaseSprite.src = 'https://mars-alien.com/game/mainbase.png';
         const glowtubeSprite = new Image();
-        glowtubeSprite.src = 'https://mars-alien.com/game/glowtube.png'; // Absolute path for testing
+        glowtubeSprite.src = 'https://mars-alien.com/game/glowtube.png';
 
         // Audio handling
         let isMusicPlaying = false;
@@ -66,13 +76,9 @@
                 const playPromise = backgroundMusic.play();
                 if (playPromise !== undefined) {
                     playPromise.then(() => {
-                        console.log('Background music started playing');
                         isMusicPlaying = true;
                         isToggling = false;
-                    }).catch(error => {
-                        console.error('Failed to play music:', error);
-                        isToggling = false;
-                    });
+                    }).catch(() => { isToggling = false; });
                 }
             }
         }
@@ -83,25 +89,17 @@
             if (isMusicPlaying) {
                 backgroundMusic.pause();
                 isMusicPlaying = false;
-                console.log('Music paused');
             } else {
                 tryPlayMusic();
             }
             setTimeout(() => { isToggling = false; }, 200);
         }
 
-        backgroundMusic.addEventListener('canplaythrough', () => {
-            console.log('Audio file loaded successfully');
-        });
-        backgroundMusic.addEventListener('error', (e) => {
-            console.error('Audio file error:', e);
-        });
-
         // Game settings
         const playerWidth = 120;
         const playerHeight = 120;
-        const visibleWidth = 73; // Approximate scaled visible width of paddle1.png
-        const visibleHeight = 32; // Approximate scaled visible height of paddle1.png
+        const visibleWidth = 73;
+        const visibleHeight = 32;
         const alienWidth = 54;
         const alienHeight = 27;
         const bulletWidth = 5;
@@ -112,8 +110,7 @@
         const bulletSpeed = 5;
 
         // Game state
-        let player = { x: canvas.width / 2 - playerWidth / 2, y: canvas.height - playerHeight, width: playerWidth, height: playerHeight, visibleWidth: visibleWidth, visibleHeight: visibleHeight, speed: 5 };
-        
+        let player = { x: canvas.width / 2 - playerWidth / 2, y: canvas.height - playerHeight, width: playerWidth, height: playerHeight, visibleWidth, visibleHeight, speed: 5 };
         let aliens = [];
         let playerBullets = [];
         let alienBullets = [];
@@ -124,7 +121,6 @@
         let gameOver = false;
         let levelTransition = false;
 
-        // Initialize aliens with random sprites
         function initAliens() {
             aliens = [];
             for (let row = 0; row < alienRows; row++) {
@@ -132,7 +128,7 @@
                     const isGlowtube = Math.random() > 0.5;
                     aliens.push({
                         x: col * (alienWidth + 10) + 50,
-                        y: row * (alienHeight + 10) + 30, // Adjusted to start near the top
+                        y: row * (alienHeight + 10) + 30,
                         width: alienWidth,
                         height: alienHeight,
                         alive: true,
@@ -143,9 +139,8 @@
             }
         }
 
-        // Reset game
         function resetGame() {
-            player = { x: canvas.width / 2 - playerWidth / 2, y: canvas.height - playerHeight, width: playerWidth, height: playerHeight, visibleWidth: visibleWidth, visibleHeight: visibleHeight, speed: 5 };
+            player = { x: canvas.width / 2 - playerWidth / 2, y: canvas.height - playerHeight, width: playerWidth, height: playerHeight, visibleWidth, visibleHeight, speed: 5 };
             aliens = [];
             playerBullets = [];
             alienBullets = [];
@@ -169,22 +164,16 @@
                 tryPlayMusic();
                 isFirstInteraction = false;
             }
-            if (e.code === 'KeyM') {
-                toggleMusic();
-            }
-            if (gameOver && e.code === 'KeyR') {
-                resetGame();
-            }
+            if (e.code === 'KeyM') toggleMusic();
+            if (gameOver && e.code === 'KeyR') resetGame();
         });
         document.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
-        // Draw player
+        // Draw functions
         function drawPlayer() {
             if (playerSprite.complete && playerSprite.naturalWidth !== 0) {
                 ctx.drawImage(playerSprite, player.x, player.y, player.width, player.height);
-                console.log('Drawing player sprite');
             } else {
-                console.error('Player sprite failed to load, using fallback');
                 ctx.fillStyle = 'white';
                 ctx.beginPath();
                 ctx.moveTo(player.x, player.y + playerHeight);
@@ -194,15 +183,12 @@
             }
         }
 
-        // Draw aliens
         function drawAliens() {
             aliens.forEach(alien => {
                 if (alien.alive) {
                     if (alien.sprite.complete && alien.sprite.naturalWidth !== 0) {
-                        ctx.drawImage(alien.sprite, alien.x, alien.y, alien.width, alien.height); // Fixed to use alien.y
-                        console.log('Drawing alien sprite:', alien.sprite.src);
+                        ctx.drawImage(alien.sprite, alien.x, alien.y, alien.width, alien.height);
                     } else {
-                        console.error('Alien sprite failed to load, using fallback for', alien.sprite.src);
                         ctx.fillStyle = alien.sprite === glowtubeSprite ? 'blue' : 'green';
                         ctx.fillRect(alien.x, alien.y, alien.width, alien.height);
                     }
@@ -210,19 +196,13 @@
             });
         }
 
-        // Draw bullets
         function drawBullets() {
             ctx.fillStyle = 'limegreen';
-            playerBullets.forEach(bullet => {
-                ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
-            });
+            playerBullets.forEach(bullet => ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height));
             ctx.fillStyle = 'red';
-            alienBullets.forEach(bullet => {
-                ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
-            });
+            alienBullets.forEach(bullet => ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height));
         }
 
-        // Draw score and lives
         function drawUI() {
             ctx.fillStyle = 'white';
             ctx.font = '20px Arial';
@@ -230,16 +210,20 @@
             ctx.fillText(`Lives: ${lives}`, canvas.width - 80, 20);
         }
 
-        // Update player position
+        // Player update with shooting sound
         function updatePlayer() {
             if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
             if (keys['ArrowRight'] && player.x < canvas.width - player.width) player.x += player.speed;
+
             if (keys['Space'] && !playerBullets.some(b => b.y > player.y - 50)) {
                 playerBullets.push({ x: player.x + playerWidth / 2 - bulletWidth / 2, y: player.y, width: bulletWidth, height: bulletHeight });
+                
+                // Play shooting sound without cutting off previous
+                const shotClone = shotSound.cloneNode();
+                shotClone.play().catch(() => {});
             }
         }
 
-        // Update aliens
         function updateAliens() {
             if (levelTransition) return;
 
@@ -268,22 +252,16 @@
             alienMoveDown = false;
         }
 
-        // Update bullets
         function updateBullets() {
-            playerBullets = playerBullets.filter(b => b.y > 0);
-            playerBullets.forEach(bullet => { bullet.y -= bulletSpeed; });
-
-            alienBullets = alienBullets.filter(b => b.y < canvas.height);
-            alienBullets.forEach(bullet => { bullet.y += bulletSpeed; });
+            playerBullets = playerBullets.filter(b => b.y > 0).map(b => ({ ...b, y: b.y - bulletSpeed }));
+            alienBullets = alienBullets.filter(b => b.y < canvas.height).map(b => ({ ...b, y: b.y + bulletSpeed }));
         }
 
-        // Check collisions
         function checkCollisions() {
-            // Player collision with alien bullets (using visible hitbox with offset)
+            // Player hit by alien bullets
             alienBullets.forEach(bullet => {
-                console.log('Player Hitbox:', player.x + 23, player.y + 44, player.visibleWidth, player.visibleHeight);
-                if (bullet.x < (player.x + 23) + player.visibleWidth && bullet.x + bullet.width > (player.x + 23) && 
-                    bullet.y < (player.y + 44) + player.visibleHeight && bullet.y + bullet.height > (player.y + 44)) {
+                if (bullet.x < player.x + 23 + player.visibleWidth && bullet.x + bullet.width > player.x + 23 &&
+                    bullet.y < player.y + 44 + player.visibleHeight && bullet.y + bullet.height > player.y + 44) {
                     lives--;
                     bullet.y = canvas.height + 10;
                     if (lives <= 0) {
@@ -293,16 +271,16 @@
                 }
             });
 
-            // Alien collision with player bullets
+            // Alien hit by player bullets
             playerBullets.forEach(bullet => {
                 aliens.forEach(alien => {
-                    if (alien.alive && bullet.x < alien.x + alien.width && bullet.x + bullet.width > alien.x && 
+                    if (alien.alive && bullet.x < alien.x + alien.width && bullet.x + bullet.width > alien.x &&
                         bullet.y < alien.y + alien.height && bullet.y + bullet.height > alien.y) {
                         alien.hits--;
-                        bullet.y = -10; // Remove bullet
+                        bullet.y = -10;
                         if (alien.hits <= 0) {
                             alien.alive = false;
-                            score += alien.sprite === glowtubeSprite ? 20 : 10; // Bonus for glowtube
+                            score += alien.sprite === glowtubeSprite ? 20 : 10;
                         }
                     }
                 });
@@ -317,7 +295,6 @@
             });
         }
 
-        // Reset level
         function resetLevel() {
             levelTransition = true;
             alienBullets = [];
@@ -329,10 +306,8 @@
             }, 500);
         }
 
-        // Game loop
         function gameLoop() {
             if (gameOver) return;
-
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             updatePlayer();
             updateAliens();
@@ -342,22 +317,16 @@
             drawAliens();
             drawBullets();
             drawUI();
-
-            if (aliens.every(alien => !alien.alive) && !levelTransition) {
-                resetLevel();
-            }
-
+            if (aliens.every(a => !a.alive) && !levelTransition) resetLevel();
             requestAnimationFrame(gameLoop);
         }
 
-        // Wait for sprites to load before starting
+        // Wait for images to load
         let imagesLoaded = 0;
-        const totalImages = 3; // paddle1.png, mainbase.png, glowtube.png
+        const totalImages = 3;
         function checkImagesLoaded() {
-            console.log(`Images loaded: ${imagesLoaded}/${totalImages}`);
             imagesLoaded++;
             if (imagesLoaded === totalImages) {
-                console.log('All images loaded, starting game');
                 initAliens();
                 gameLoop();
             }
@@ -365,18 +334,9 @@
         playerSprite.onload = checkImagesLoaded;
         mainbaseSprite.onload = checkImagesLoaded;
         glowtubeSprite.onload = checkImagesLoaded;
-        playerSprite.onerror = () => {
-            console.error('Failed to load paddle1.png, using fallback');
-            checkImagesLoaded();
-        };
-        mainbaseSprite.onerror = () => {
-            console.error('Failed to load mainbase.png, using fallback');
-            checkImagesLoaded();
-        };
-        glowtubeSprite.onerror = () => {
-            console.error('Failed to load glowtube.png, using fallback');
-            checkImagesLoaded();
-        };
+        playerSprite.onerror = checkImagesLoaded;
+        mainbaseSprite.onerror = checkImagesLoaded;
+        glowtubeSprite.onerror = checkImagesLoaded;
     </script>
 </body>
 </html>
