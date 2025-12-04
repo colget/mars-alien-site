@@ -7,449 +7,360 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            background-color: #000;
-            overflow: hidden;
-            height: 100vh;
-            width: 100vw;
-            position: relative;
-            touch-action: none;
-            font-family: Arial, sans-serif;
+            background:#000; overflow:hidden; height:100vh; width:100vw;
+            touch-action:none; font-family:Arial,sans-serif;
         }
-        canvas {
-            border: 2px solid #fff;
-            background-image: url('news.jpg');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            position: absolute;
-            display: block;
-        }
+        canvas { position:absolute; background:url('news.jpg') center/cover no-repeat; border:2px solid #fff; }
         #gameOver {
-            position: absolute;
-            color: #ff4444;
-            font-size: clamp(24px, 8vw, 48px);
-            line-height: 1.3;
-            display: none;
-            text-align: center;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 10;
-            text-shadow: 2px 2px 4px #000;
-            white-space: pre-line;
+            position:absolute; color:#ff4444; font-size:clamp(24px,8vw,48px); text-align:center;
+            left:50%; top:50%; transform:translate(-50%,-50%); z-index:10; display:none;
+            text-shadow:2px 2px 6px #000; white-space:pre-line;
         }
         #rotateScreen {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100vw; height: 100vh;
-            background: #000;
-            color: #fff;
-            display: none;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-            font-size: clamp(20px, 5vw, 32px);
+            position:fixed; inset:0; background:#000; color:#fff; display:none;
+            flex-direction:column; justify-content:center; align-items:center; z-index:100;
+            font-size:clamp(20px,5vw,32px);
         }
-        #rotateScreen .icon {
-            font-size: clamp(48px, 15vw, 96px);
-            animation: spin 2s linear infinite;
-        }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        #rotateScreen .icon { font-size:clamp(48px,15vw,96px); animation:spin 2s linear infinite; }
+        @keyframes spin { to { transform:rotate(360deg); } }
 
-        /* Virtual Joystick (left side) */
+        /* Virtual Joystick */
         #virtualJoystick {
-            position: absolute;
-            left: 10px;
-            bottom: 20px;
-            width: 140px;
-            height: 140px;
-            background: rgba(255, 255, 255, 0.15);
-            border: 3px solid rgba(255, 255, 255, 0.4);
-            border-radius: 50%;
-            z-index: 20;
-            display: none;
-            touch-action: none;
+            position:absolute; left:20px; bottom:30px; width:140px; height:140px;
+            background:rgba(255,255,255,0.15); border:4px solid rgba(255,255,255,0.4);
+            border-radius:50%; z-index:20; display:none; touch-action:none;
         }
         #virtualJoystick::before {
-            content: '';
-            position: absolute;
-            top: 50%; left: 50%;
-            width: 50px; height: 50px;
-            background: rgba(255, 255, 255, 0.6);
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-            transition: all 0.1s;
+            content:''; position:absolute; top:50%; left:50%; width:60px; height:60px;
+            background:rgba(255,255,255,0.6); border-radius:50%;
+            transform:translate(-50%,-50%); transition:transform .08s, background .2s;
         }
-        #virtualJoystick.active::before {
-            background: #00ff00;
-            box-shadow: 0 0 15px #0f0;
-        }
+        #virtualJoystick.active::before { background:#0f0; box-shadow:0 0 20px #0f0; }
 
-        /* Fire Button (right side) */
+        /* Fire Button */
         #fireButton {
-            position: absolute;
-            right: 20px;
-            bottom: 40px;
-            width: 100px;
-            height: 100px;
-            background: rgba(255, 0, 0, 0.3);
-            border: 4px solid rgba(255, 100, 100, 0.8);
-            border-radius: 50%;
-            z-index: 20;
-            display: none;
-            touch-action: none;
-            color: white;
-            font-size: 14px;
-            text-align: center;
-            line-height: 100px;
-            font-weight: bold;
-            text-shadow: 1px 1px 3px #000;
+            position:absolute; right:30px; bottom:40px; width:110px; height:110px;
+            background:rgba(255,0,0,0.35); border:5px solid rgba(255,100,100,0.9);
+            border-radius:50%; z-index:20; display:none; touch-action:none;
+            color:white; font:bold 18px Arial; text-align:center; line-height:110px;
+            text-shadow:2px 2px 4px #000;
         }
-        #fireButton::after {
-            content: "FIRE";
-        }
-        #fireButton:active {
-            background: rgba(255, 50, 50, 0.6);
-            transform: scale(0.95);
-        }
+        #fireButton:active { background:rgba(255,50,50,0.7); transform:scale(0.92); }
 
-        audio { display: none; }
+        audio { display:none; }
     </style>
 </head>
 <body>
     <canvas id="gameCanvas"></canvas>
     <div id="gameOver">Game Over\nTap Screen to Restart</div>
-    <div id="rotateScreen">
-        <h1>Please rotate to landscape</h1>
-        <div class="icon">Rotate</div>
-    </div>
+    <div id="rotateScreen"><h1>Please rotate to landscape</h1><div class="icon">Rotate</div></div>
 
-    <!-- Mobile Controls -->
     <div id="virtualJoystick"></div>
-    <div id="fireButton"></div>
+    <div id="fireButton">FIRE</div>
 
-    <!-- Audio -->
-    <audio id="backgroundMusic" loop preload="auto">
-        <source src="entertainer.mp3" type="audio/mpeg">
-    </audio>
-    <audio id="shotSound" preload="auto">
-        <source src="shot.mp3" type="audio/mpeg">
-    </audio>
+    <audio id="backgroundMusic" loop preload="auto"><source src="entertainer.mp3" type="audio/mpeg"></audio>
+    <audio id="shotSound" preload="auto"><source src="shot.mp3" type="audio/mpeg"></audio>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const gameOverText = document.getElementById('gameOver');
         const rotateScreen = document.getElementById('rotateScreen');
-        const virtualJoystick = document.getElementById('virtualJoystick');
-        const fireButton = document.getElementById('fireButton');
-        const backgroundMusic = document.getElementById('backgroundMusic');
-        const shotSound = document.getElementById('shotSound');
+        const joystick = document.getElementById('virtualJoystick');
+        const fireBtn = document.getElementById('fireButton');
 
-        const GAME_WIDTH = 800;
-        const GAME_HEIGHT = 600;
+        const GAME_W = 800, GAME_H = 600;
 
         // Sprites
-        const playerSprite = new Image(); playerSprite.src = 'https://mars-alien.com/game/paddle1.png';
-        const mainbaseSprite = new Image(); mainbaseSprite.src = 'https://mars-alien.com/game/mainbase.png';
-        const glowtubeSprite = new Image(); glowtubeSprite.src = 'https://mars-alien.com/game/glowtube.png';
+        const playerImg = new Image(); playerImg.src = 'https://mars-alien.com/game/paddle1.png';
+        const mainbaseImg = new Image(); mainbaseImg.src = 'https://mars-alien.com/game/mainbase.png';
+        const glowtubeImg = new Image(); glowtubeImg.src = 'https://mars-alien.com/game/glowtube.png';
 
-        // State
-        const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-        let isPortraitMode = false;
-        let isFirstInteraction = true;
+        // Mobile detection
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        let isPortrait = false;
+        let imagesLoaded = 0;
         let gameReady = false;
-        let gameInitialized = false;
+        let firstTouch = true;
 
-        // Virtual Joystick state
-        let joystickActive = false;
-        let joystickCenterX = 0;
-        let joystickCenterY = 0;
-        let joystickTouchId = null;
-        let joystickDeltaX = 0; // -70 to +70
+        // Joystick state
+        let joyActive = false;
+        let joyTouchId = null;
+        let joyDeltaX = 0; // -70 … +70
 
         // Fire button state
         let firePressed = false;
 
         // Audio
-        function playShotSound() {
-            const s = shotSound.cloneNode();
-            s.volume = 0.5;
-            s.play().catch(() => {});
-        }
+        const bgMusic = document.getElementById('backgroundMusic');
+        const shotSnd = document.getElementById('shotSound');
+        function playShot() { const s = shotSnd.cloneNode(); s.volume=0.5; s.play().catch(()=>{}); }
 
-        function handleFirstInteraction() {
-            if (isFirstInteraction) {
-                isFirstInteraction = false;
-                backgroundMusic.play().catch(() => {});
-                if (screen.orientation && screen.orientation.lock) {
-                    screen.orientation.lock('landscape').catch(() => {});
-                }
-            }
-        }
-
-        // === VIRTUAL JOYSTICK (LEFT SIDE) ===
-        virtualJoystick.addEventListener('pointerdown', e => {
-            if (!joystickTouchId) {
-                handleFirstInteraction();
-                joystickTouchId = e.pointerId;
-                joystickActive = true;
-                joystickCenterX = virtualJoystick.offsetLeft + 70;
-                joystickCenterY = virtualJoystick.offsetTop + 70;
-                virtualJoystick.classList.add('active');
-                updateJoystick(e);
-            }
+        // === JOYSTICK ===
+        joystick.addEventListener('pointerdown', e=>{
+            if (joyTouchId) return;
+            joyTouchId = e.pointerId;
+            joyActive = true;
+            joystick.classList.add('active');
+            updateJoy(e);
         });
-
-        function updateJoystick(e) {
-            if (!joystickActive) return;
-            const rect = virtualJoystick.getBoundingClientRect();
+        function updateJoy(e){
+            if (!joyActive) return;
+            const rect = joystick.getBoundingClientRect();
             const dx = e.clientX - (rect.left + 70);
             const dy = e.clientY - (rect.top + 70);
-            const dist = Math.min(70, Math.hypot(dx, dy));
-            const angle = Math.atan2(dy, dx);
-            joystickDeltaX = Math.cos(angle) * dist;
-            virtualJoystick.style.setProperty('--dx', joystickDeltaX + 'px');
-            virtualJoystick.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
+            const dist = Math.min(70, Math.hypot(dx,dy));
+            const angle = Math.atan2(dy,dx);
+            joyDeltaX = Math.cos(angle) * dist;
+            joystick.style.setProperty('--dx', joyDeltaX+'px');
+            joystick.style.setProperty('--dy', Math.sin(angle)*dist+'px');
         }
-
-        document.addEventListener('pointermove', e => {
-            if (e.pointerId === joystickTouchId) {
-                e.preventDefault();
-                updateJoystick(e);
+        document.addEventListener('pointermove', e=>{
+            if (e.pointerId===joyTouchId) updateJoy(e);
+        });
+        document.addEventListener('pointerup', e=>{
+            if (e.pointerId===joyTouchId){
+                joyTouchId = null; joyActive = false; joyDeltaX = 0;
+                joystick.classList.remove('active');
+                joystick.style.removeProperty('--dx');
+                joystick.style.removeProperty('--dy');
             }
         });
 
-        document.addEventListener('pointerup', e => {
-            if (e.pointerId === joystickTouchId) {
-                joystickTouchId = null;
-                joystickActive = false;
-                joystickDeltaX = 0;
-                virtualJoystick.classList.remove('active');
-                virtualJoystick.style.removeProperty('--dx');
-                virtualJoystick.style.removeProperty('--dy');
-            }
-        });
+        // === FIRE BUTTON ===
+        fireBtn.addEventListener('pointerdown', e=>{ e.preventDefault(); firePressed=true; });
+        fireBtn.addEventListener('pointerup', ()=>{ firePressed=false; });
+        fireBtn.addEventListener('pointercancel', ()=>{ firePressed=false; });
 
-        // === FIRE BUTTON (RIGHT SIDE) ===
-        fireButton.addEventListener('pointerdown', e => {
-            e.preventDefault();
-            handleFirstInteraction();
-            firePressed = true;
-        });
-        fireButton.addEventListener('pointerup', () => firePressed = false);
-        fireButton.addEventListener('pointercancel', () => firePressed = false);
-        fireButton.addEventListener('pointerleave', () => firePressed = false);
-
-        // === GAME OVER TAP TO RESTART ===
-        document.addEventListener('pointerdown', e => {
-            if (gameOver) {
-                resetGame();
+        // === FIRST TOUCH / AUDIO UNLOCK ===
+        function unlockAudio(){
+            if (firstTouch){
+                firstTouch=false;
+                bgMusic.play().catch(()=>{});
+                if (screen.orientation?.lock) screen.orientation.lock('landscape').catch(()=>{});
             }
-        });
+        }
+        document.addEventListener('pointerdown', unlockAudio);
+
+        // === RESTART ON GAME OVER ===
+        document.addEventListener('pointerdown', e=>{ if (gameOver) resetGame(); });
 
         // Keyboard (PC)
         const keys = {};
-        document.addEventListener('keydown', e => {
-            handleFirstInteraction();
-            keys[e.code] = true;
-            if (e.code === 'KeyR' && gameOver) resetGame();
-        });
-        document.addEventListener('keyup', e => keys[e.code] = false);
+        document.addEventListener('keydown', e=>{ keys[e.code]=true; if (gameOver && e.code==='KeyR') resetGame(); });
+        document.addEventListener('keyup', e=>{ keys[e.code]=false; });
 
         // === RESIZE & ORIENTATION ===
-        function resizeCanvas() {
-            const dpr = Math.min(window.devicePixelRatio || 1, 2);
-            const scale = Math.min(window.innerWidth / GAME_WIDTH, window.innerHeight / GAME_HEIGHT);
-            const w = GAME_WIDTH * scale;
-            const h = GAME_HEIGHT * scale;
+        function resize(){
+            const dpr = Math.min(window.devicePixelRatio||1, 2);
+            const scale = Math.min(innerWidth/GAME_W, innerHeight/GAME_H);
+            const w = GAME_W*scale, h = GAME_H*scale;
+            canvas.style.width = w+'px'; canvas.style.height = h+'px';
+            canvas.style.left = (innerWidth-w)/2 +'px';
+            canvas.style.top = (innerHeight-h)/2 +'px';
+            canvas.width = GAME_W*dpr; canvas.height = GAME_H*dpr;
+            ctx.setTransform(dpr,0,0,dpr,0,0);
 
-            canvas.style.width = w + 'px';
-            canvas.style.height = h + 'px';
-            canvas.style.left = (window.innerWidth - w) / 2 + 'px';
-            canvas.style.top = (window.innerHeight - h) / 2 + 'px';
-
-            canvas.width = GAME_WIDTH * dpr;
-            canvas.height = GAME_HEIGHT * dpr;
-            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            isPortrait = innerHeight > innerWidth;
+            rotateScreen.style.display = isPortrait ? 'flex' : 'none';
+            joystick.style.display = (isMobile && !isPortrait) ? 'block' : 'none';
+            fireBtn.style.display   = (isMobile && !isPortrait) ? 'block' : 'none';
         }
+        window.addEventListener('resize', resize);
+        window.addEventListener('orientationchange', ()=>setTimeout(resize,300));
 
-        function updateOrientation() {
-            isPortraitMode = window.innerHeight > window.innerWidth;
-            rotateScreen.style.display = isPortraitMode ? 'flex' : 'none';
-            virtualJoystick.style.display = isMobile && !isPortraitMode ? 'block' : 'none';
-            fireButton.style.display = isMobile && !isPortraitMode ? 'block' : 'none';
-            resizeCanvas();
-            if (!isPortraitMode && gameReady && !gameInitialized) {
-                resetGame();
-                gameInitialized = true;
+        // === GAME LOGIC ===
+        const playerW=120, playerH=120, visW=73, visH=32;
+        const alienW=54, alienH=27, bulletW=5, bulletH=10;
+        const pwW=25, pwH=12, pwSpeed=1.5, pwChance=0.15, shieldTime=10000;
+        const rows=5, cols=9;
+        let alienSpeed=1, fireRate=110, lastFire=0;
+
+        let player={}, aliens=[], pBullets=[], aBullets=[], powerups=[];
+        let score=0, lives=3, dir=1, down=false, gameOver=false, trans=false;
+
+        function initPlayer(){ player={x:GAME_W/2-playerW/2, y:GAME_H-playerH, width:playerW, height:playerH,
+            visibleWidth:visW, visibleHeight:visH, speed:6, shield:false, shieldEnd:0}; }
+
+        function initAliens(){
+            aliens=[];
+            for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+                const glow = Math.random()>0.5;
+                aliens.push({x:c*(alienW+10)+50, y:r*(alienH+10)+30,
+                    width:alienW, height:alienH, alive:true,
+                    sprite:glow?glowtubeImg:mainbaseImg, hits:glow?2:1});
             }
         }
 
-        window.addEventListener('resize', updateOrientation);
-        window.addEventListener('orientationchange', () => setTimeout(updateOrientation, 300));
-
-        // === GAME LOGIC (unchanged except movement & firing) ===
-        const playerWidth = 120, playerHeight = 120, visibleWidth = 73, visibleHeight = 32;
-        const alienWidth = 54, alienHeight = 27;
-        const bulletWidth = 5, bulletHeight = 10;
-        const powerupWidth = 25, powerupHeight = 12;
-        const powerupSpeed = 1.5, powerupDropChance = 0.15, shieldDuration = 10000;
-        const alienRows = 5, alienCols = 9;
-        let alienSpeed = 1;
-        const bulletSpeed = 5, fireRateMs = 110;
-
-        let player = {}, aliens = [], playerBullets = [], alienBullets = [], powerups = [];
-        let score = 0, lives = 3, alienDirection = 1, alienMoveDown = false;
-        let gameOver = false, levelTransition = false, lastFireTime = 0;
-
-        function initPlayer() {
-            player = { x: GAME_WIDTH/2 - playerWidth/2, y: GAME_HEIGHT - playerHeight,
-                width: playerWidth, height: playerHeight, visibleWidth, visibleHeight, speed: 6,
-                shieldActive: false, shieldEndTime: 0 };
-        }
-
-        function initAliens() {
-            aliens = [];
-            for (let r = 0; r < alienRows; r++) for (let c = 0; c < alienCols; c++) {
-                const isGlow = Math.random() > 0.5;
-                aliens.push({
-                    x: c * (alienWidth + 10) + 50,
-                    y: r * (alienHeight + 10) + 30,
-                    width: alienWidth, height: alienHeight,
-                    alive: true, sprite: isGlow ? glowtubeSprite : mainbaseSprite,
-                    hits: isGlow ? 2 : 1
-                });
-            }
-        }
-
-        function resetGame() {
+        function resetGame(){
             initPlayer(); initAliens();
-            playerBullets = []; alienBullets = []; powerups = [];
-            score = 0; lives = 3; alienDirection = 1; alienMoveDown = false;
-            gameOver = false; levelTransition = false; alienSpeed = 1; lastFireTime = 0;
-            gameOverText.style.display = 'none';
-            gameLoop();
+            pBullets=[]; aBullets=[]; powerups=[];
+            score=0; lives=3; dir=1; down=false; gameOver=false; trans=false; alienSpeed=1; lastFire=0;
+            gameOverText.style.display='none';
+            if (!isPortrait) requestAnimationFrame(gameLoop);
         }
 
-        function updatePlayer() {
-            // Movement: Virtual joystick OR keyboard
-            if (joystickActive) {
-                player.x = Math.max(0, Math.min(GAME_WIDTH - player.width,
-                    (GAME_WIDTH/2 - player.width/2) + joystickDeltaX * 6));
-            } else if (keys['ArrowLeft']) player.x -= player.speed;
-            else if (keys['ArrowRight']) player.x += player.speed;
-            player.x = Math.max(0, Math.min(GAME_WIDTH - player.width, player.x));
+        function updatePlayer(){
+            // Movement
+            if (joyActive){
+                player.x = Math.max(0, Math.min(GAME_W-playerW,
+                    GAME_W/2 - playerW/2 + joyDeltaX*6));
+            } else {
+                if (keys['ArrowLeft'])  player.x -= player.speed;
+                if (keys['ArrowRight']) player.x += player.speed;
+            }
+            player.x = Math.max(0, Math.min(GAME_W-playerW, player.x));
 
             // Shooting
             const now = Date.now();
-            const wantsFire = firePressed || keys['Space'];
-            if (wantsFire && now - lastFireTime > fireRateMs) {
-                playerBullets.push({
-                    x: player.x + playerWidth/2 - bulletWidth/2,
-                    y: player.y,
-                    width: bulletWidth, height: bulletHeight
-                });
-                playShotSound();
-                lastFireTime = now;
+            const shoot = firePressed || keys['Space'];
+            if (shoot && now-lastFire>fireRate){
+                pBullets.push({x:player.x+playerW/2-bulletW/2, y:player.y,
+                    width:bulletW, height:bulletH});
+                playShot();
+                lastFire=now;
             }
         }
 
-        // (All other game functions — draw, updateAliens, collisions, etc. — unchanged from previous version)
-        // Only pasting key parts to save space — full logic is identical
-
-        function drawPlayer() {
-            if (playerSprite.complete && playerSprite.naturalWidth) {
-                ctx.drawImage(playerSprite, player.x, player.y, player.width, player.height);
-            } else {
-                ctx.fillStyle = 'white';
+        function drawPlayer(){
+            if (playerImg.complete && playerImg.naturalWidth)
+                ctx.drawImage(playerImg, player.x, player.y, player.width, player.height);
+            else {
+                ctx.fillStyle='#fff';
                 ctx.beginPath();
-                ctx.moveTo(player.x, player.y + playerHeight);
-                ctx.lineTo(player.x + playerWidth/2, player.y);
-                ctx.lineTo(player.x + playerWidth, player.y + playerHeight);
+                ctx.moveTo(player.x, player.y+playerH);
+                ctx.lineTo(player.x+playerW/2, player.y);
+                ctx.lineTo(player.x+playerW, player.y+playerH);
                 ctx.fill();
             }
         }
 
-        function drawAliens() { /* unchanged */ }
-        function drawBullets() { /* unchanged */ }
-        function drawUI() {
-            ctx.fillStyle = 'white'; ctx.font = '20px Arial';
-            ctx.fillText(`Score: ${score}`, 10, 25);
-            ctx.fillText(`Lives: ${lives}`, GAME_WIDTH - 100, 25);
+        function drawAliens(){
+            aliens.forEach(a=>{ if(a.alive){
+                if(a.sprite.complete) ctx.drawImage(a.sprite, a.x, a.y, a.width, a.height);
+                else { ctx.fillStyle=a.sprite===glowtubeImg?'#00f':'#0f0';
+                       ctx.fillRect(a.x,a.y,a.width,a.height); }
+            }});
         }
 
-        function updateAliens() { /* unchanged */ }
-        function updateBullets() { /* unchanged */ }
-        function checkCollisions() { /* unchanged — includes shield power-up */ }
-        function resetLevel() { /* unchanged */ }
+        function drawBullets(){
+            ctx.fillStyle='#0f0'; pBullets.forEach(b=>ctx.fillRect(b.x,b.y,b.width,b.height));
+            ctx.fillStyle='#f00'; aBullets.forEach(b=>ctx.fillRect(b.x,b.y,b.width,b.height));
+        }
 
-        function drawShield() {
-            if (player.shieldActive) {
-                ctx.fillStyle = '#00FFFF';
-                ctx.font = 'bold 20px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText('----------', player.x + player.width/2, player.y - 15);
-                ctx.textAlign = 'left';
+        function drawUI(){
+            ctx.fillStyle='#fff'; ctx.font='20px Arial';
+            ctx.fillText(`Score: ${score}`,10,25);
+            ctx.fillText(`Lives: ${lives}`,GAME_W-110,25);
+        }
+
+        function drawShield(){
+            if (player.shield){
+                ctx.fillStyle='#0ff'; ctx.font='bold 20px Arial'; ctx.textAlign='center';
+                ctx.fillText('----------', player.x+playerW/2, player.y-15);
+                ctx.textAlign='left';
             }
         }
 
-        function updateShield() {
-            if (player.shieldActive && Date.now() > player.shieldEndTime) player.shieldActive = false;
+        function updateShield(){ if(player.shield && Date.now()>player.shieldEnd) player.shield=false; }
+        function updatePowerups(){ powerups=powerups.filter(p=>p.y<GAME_H); powerups.forEach(p=>p.y+=pwSpeed); }
+        function drawPowerups(){
+            ctx.fillStyle='rgba(0,255,255,0.8)';
+            powerups.forEach(p=>ctx.fillRect(p.x,p.y,p.width,p.height));
+            ctx.fillStyle='#000'; ctx.font='bold 10px Arial'; ctx.textAlign='center';
+            powerups.forEach(p=>ctx.fillText('SHLD',p.x+p.width/2,p.y+p.height-2));
+            ctx.textAlign='left'; ctx.fillStyle='#fff';
         }
 
-        function updatePowerups() {
-            powerups = powerups.filter(p => p.y < GAME_HEIGHT);
-            powerups.forEach(p => p.y += powerupSpeed);
+        function updateAliens(){
+            if(trans) return;
+            let minX=Infinity, maxX=-Infinity;
+            aliens.forEach(a=>{if(a.alive){minX=Math.min(minX,a.x); maxX=Math.max(maxX,a.x+a.width);}});
+            if(maxX>GAME_W-10 || minX<10){ dir*=-1; down=true; }
+            aliens.forEach(a=>{if(a.alive){
+                a.x += alienSpeed*dir;
+                if(down) a.y+=10;
+                if(Math.random()<0.001 && aBullets.length<3)
+                    aBullets.push({x:a.x+a.width/2-bulletW/2, y:a.y+a.height, width:bulletW, height:bulletH});
+            }});
+            down=false;
         }
 
-        function drawPowerups() {
-            ctx.fillStyle = 'rgba(0,255,255,0.8)';
-            powerups.forEach(p => ctx.fillRect(p.x, p.y, p.width, p.height));
-            ctx.fillStyle = 'black'; ctx.font = 'bold 10px Arial'; ctx.textAlign = 'center';
-            powerups.forEach(p => ctx.fillText('SHLD', p.x + p.width/2, p.y + p.height - 2));
-            ctx.textAlign = 'left'; ctx.fillStyle = 'white';
+        function updateBullets(){
+            pBullets = pBullets.filter(b=>b.y>0); pBullets.forEach(b=>b.y-=bulletSpeed);
+            aBullets = aBullets.filter(b=>b.y<GAME_H); aBullets.forEach(b=>b.y+=bulletSpeed);
         }
 
-        function gameLoop() {
-            if (isPortraitMode || gameOver) return;
-            ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+        function checkCollisions(){
+            // Power-up pickup
+            for(let i=powerups.length-1;i>=0;i--){
+                const p=powerups[i];
+                if(p.x<player.x+player.width && p.x+p.width>player.x &&
+                   p.y<player.y+player.height && p.y+p.height>player.y){
+                    player.shield=true; player.shieldEnd=Date.now()+shieldTime;
+                    powerups.splice(i,1);
+                }
+            }
 
-            updatePlayer();
-            updateAliens();
-            updateBullets();
-            updatePowerups();
-            updateShield();
-            checkCollisions();
+            // Alien bullets vs player
+            aBullets.forEach(b=>{
+                if(b.x < player.x+23+visW && b.x+bulletW > player.x+23 &&
+                   b.y < player.y+44+visH && b.y+bulletH > player.y+44){
+                    if(!player.shield){ lives--; if(lives<=0){ gameOver=true; gameOverText.style.display='block'; }}
+                    b.y = GAME_H+10;
+                }
+            });
 
-            drawPlayer();
-            drawShield();
-            drawAliens();
-            drawBullets();
-            drawPowerups();
-            drawUI();
+            // Player bullets vs aliens
+            pBullets.forEach(b=>{
+                aliens.forEach(a=>{
+                    if(a.alive && b.x<a.x+a.width && b.x+b.width>a.x &&
+                       b.y<a.y+a.height && b.y+b.height>a.y){
+                        a.hits--; b.y=-10;
+                        if(a.hits<=0){
+                            a.alive=false; score += a.sprite===glowtubeImg?20:10;
+                            if(Math.random()<pwChance)
+                                powerups.push({x:a.x+a.width/2-pwW/2, y:a.y, width:pwW, height:pwH});
+                        }
+                    }
+                });
+            });
 
-            if (aliens.every(a => !a.alive) && !levelTransition) resetLevel();
+            // Aliens reach player
+            aliens.forEach(a=>{if(a.alive && a.y+a.height>player.y){ gameOver=true; gameOverText.style.display='block'; }});
+        }
+
+        function resetLevel(){
+            trans=true; aBullets=[]; pBullets=[]; powerups=[];
+            setTimeout(()=>{ initAliens(); alienSpeed*=1.5; trans=false; },500);
+        }
+
+        function gameLoop(){
+            if(isPortrait || gameOver) return;
+            ctx.clearRect(0,0,GAME_W,GAME_H);
+
+            updatePlayer(); updateAliens(); updateBullets(); updatePowerups(); updateShield(); checkCollisions();
+
+            drawPlayer(); drawShield(); drawAliens(); drawBullets(); drawPowerups(); drawUI();
+
+            if(aliens.every(a=>!a.alive) && !trans) resetLevel();
 
             requestAnimationFrame(gameLoop);
         }
 
         // Image loading
-        let loaded = 0;
-        function imgLoaded() {
-            if (++loaded === 3) {
-                gameReady = true;
-                if (!isPortraitMode) {
-                    resetGame();
-                    gameInitialized = true;
-                }
+        function imgDone(){
+            if(++imagesLoaded===3){
+                gameReady=true;
+                resize();
+                if(!isPortrait) resetGame();
             }
         }
-        playerSprite.onload = mainbaseSprite.onload = glowtubeSprite.onload = imgLoaded;
-        playerSprite.onerror = mainbaseSprite.onerror = glowtubeSprite.onerror = imgLoaded;
+        playerImg.onload = mainbaseImg.onload = glowtubeImg.onload = imgDone;
+        playerImg.onerror = mainbaseImg.onerror = glowtubeImg.onerror = imgDone;
 
-        updateOrientation();
+        // Start
+        resize();
     </script>
 </body>
 </html>
