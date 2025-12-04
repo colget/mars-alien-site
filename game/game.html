@@ -55,7 +55,7 @@
         const ctx = canvas.getContext('2d');
         const gameOverText = document.getElementById('gameOver');
         const backgroundMusic = document.getElementById('backgroundMusic');
-        const shotSound = document.getElementById('shotSound');
+        const shotSound = document.getElementById('shotSound'); // NEW
 
         // Load sprite images
         const playerSprite = new Image();
@@ -65,7 +65,7 @@
         const glowtubeSprite = new Image();
         glowtubeSprite.src = 'https://mars-alien.com/game/glowtube.png';
 
-        // Audio handling
+        // ------------------- AUDIO HANDLING -------------------
         let isMusicPlaying = false;
         let isFirstInteraction = true;
         let isToggling = false;
@@ -78,7 +78,10 @@
                     playPromise.then(() => {
                         isMusicPlaying = true;
                         isToggling = false;
-                    }).catch(() => { isToggling = false; });
+                    }).catch(err => {
+                        console.error('Music play failed:', err);
+                        isToggling = false;
+                    });
                 }
             }
         }
@@ -92,10 +95,16 @@
             } else {
                 tryPlayMusic();
             }
-            setTimeout(() => { isToggling = false; }, 200);
+            setTimeout(() => isToggling = false, 200);
         }
 
-        // Game settings
+        // Simple function to play the shot sound (resets to beginning each time)
+        function playShotSound() {
+            shotSound.currentTime = 0;      // rewind to start (allows rapid fire)
+            shotSound.play().catch(err => console.log("Shot sound blocked (probably no user interaction yet)"));
+        }
+
+        // ------------------- GAME SETTINGS -------------------
         const playerWidth = 120;
         const playerHeight = 120;
         const visibleWidth = 73;
@@ -109,7 +118,7 @@
         let alienSpeed = 1;
         const bulletSpeed = 5;
 
-        // Game state
+        // ------------------- GAME STATE -------------------
         let player = { x: canvas.width / 2 - playerWidth / 2, y: canvas.height - playerHeight, width: playerWidth, height: playerHeight, visibleWidth, visibleHeight, speed: 5 };
         let aliens = [];
         let playerBullets = [];
@@ -121,6 +130,7 @@
         let gameOver = false;
         let levelTransition = false;
 
+        // ------------------- INITIALISE ALIENS -------------------
         function initAliens() {
             aliens = [];
             for (let row = 0; row < alienRows; row++) {
@@ -139,6 +149,7 @@
             }
         }
 
+        // ------------------- RESET GAME -------------------
         function resetGame() {
             player = { x: canvas.width / 2 - playerWidth / 2, y: canvas.height - playerHeight, width: playerWidth, height: playerHeight, visibleWidth, visibleHeight, speed: 5 };
             aliens = [];
@@ -156,20 +167,40 @@
             gameLoop();
         }
 
-        // Keyboard controls
+        // ------------------- INPUT -------------------
         let keys = {};
         document.addEventListener('keydown', (e) => {
             keys[e.code] = true;
+
+            // Unlock audio on first user interaction
             if (isFirstInteraction && ['ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
                 tryPlayMusic();
                 isFirstInteraction = false;
             }
+
             if (e.code === 'KeyM') toggleMusic();
             if (gameOver && e.code === 'KeyR') resetGame();
         });
-        document.addEventListener('keyup', (e) => { keys[e.code] = false; });
+        document.addEventListener('keyup', e => keys[e.code] = false);
 
-        // Draw functions
+        // ------------------- PLAYER UPDATE (with shooting sound) -------------------
+        function updatePlayer() {
+            if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
+            if (keys['ArrowRight'] && player.x < canvas.width - player.width) player.x += player.speed;
+
+            // Fire bullet + play sound
+            if (keys['Space'] && !playerBullets.some(b => b.y > player.y - 50)) {
+                playerBullets.push({
+                    x: player.x + playerWidth / 2 - bulletWidth / 2,
+                    y: player.y,
+                    width: bulletWidth,
+                    height: bulletHeight
+                });
+                playShotSound(); // PLAY SHOT SOUND HERE
+            }
+        }
+
+        // ------------------- REST OF THE GAME (unchanged except minor cleanups) -------------------
         function drawPlayer() {
             if (playerSprite.complete && playerSprite.naturalWidth !== 0) {
                 ctx.drawImage(playerSprite, player.x, player.y, player.width, player.height);
@@ -198,9 +229,9 @@
 
         function drawBullets() {
             ctx.fillStyle = 'limegreen';
-            playerBullets.forEach(bullet => ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height));
+            playerBullets.forEach(b => ctx.fillRect(b.x, b.y, b.width, b.height));
             ctx.fillStyle = 'red';
-            alienBullets.forEach(bullet => ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height));
+            alienBullets.forEach(b => ctx.fillRect(b.x, b.y, b.width, b.height));
         }
 
         function drawUI() {
@@ -210,42 +241,25 @@
             ctx.fillText(`Lives: ${lives}`, canvas.width - 80, 20);
         }
 
-        // Player update with shooting sound
-        function updatePlayer() {
-            if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
-            if (keys['ArrowRight'] && player.x < canvas.width - player.width) player.x += player.speed;
-
-            if (keys['Space'] && !playerBullets.some(b => b.y > player.y - 50)) {
-                playerBullets.push({ x: player.x + playerWidth / 2 - bulletWidth / 2, y: player.y, width: bulletWidth, height: bulletHeight });
-                
-                // Play shooting sound without cutting off previous
-                const shotClone = shotSound.cloneNode();
-                shotClone.play().catch(() => {});
-            }
-        }
-
         function updateAliens() {
             if (levelTransition) return;
-
             let minX = canvas.width, maxX = 0;
-            aliens.forEach(alien => {
-                if (alien.alive) {
-                    if (alien.x < minX) minX = alien.x;
-                    if (alien.x + alien.width > maxX) maxX = alien.x + alien.width;
+            aliens.forEach(a => {
+                if (a.alive) {
+                    if (a.x < minX) minX = a.x;
+                    if (a.x + a.width > maxX) maxX = a.x + a.width;
                 }
             });
-
             if (maxX > canvas.width - 10 || minX < 10) {
                 alienDirection *= -1;
                 alienMoveDown = true;
             }
-
-            aliens.forEach(alien => {
-                if (alien.alive) {
-                    alien.x += alienSpeed * alienDirection;
-                    if (alienMoveDown) alien.y += 10;
+            aliens.forEach(a => {
+                if (a.alive) {
+                    a.x += alienSpeed * alienDirection;
+                    if (alienMoveDown) a.y += 10;
                     if (Math.random() < 0.001 && alienBullets.length < 3) {
-                        alienBullets.push({ x: alien.x + alien.width / 2 - bulletWidth / 2, y: alien.y + alien.height, width: bulletWidth, height: bulletHeight });
+                        alienBullets.push({ x: a.x + a.width / 2 - bulletWidth / 2, y: a.y + a.height, width: bulletWidth, height: bulletHeight });
                     }
                 }
             });
@@ -253,17 +267,18 @@
         }
 
         function updateBullets() {
-            playerBullets = playerBullets.filter(b => b.y > 0).map(b => ({ ...b, y: b.y - bulletSpeed }));
-            alienBullets = alienBullets.filter(b => b.y < canvas.height).map(b => ({ ...b, y: b.y + bulletSpeed }));
+            playerBullets = playerBullets.filter(b => b.y > 0);
+            playerBullets.forEach(b => b.y -= bulletSpeed);
+            alienBullets = alienBullets.filter(b => b.y < canvas.height);
+            alienBullets.forEach(b => b.y += bulletSpeed);
         }
 
         function checkCollisions() {
-            // Player hit by alien bullets
-            alienBullets.forEach(bullet => {
-                if (bullet.x < player.x + 23 + player.visibleWidth && bullet.x + bullet.width > player.x + 23 &&
-                    bullet.y < player.y + 44 + player.visibleHeight && bullet.y + bullet.height > player.y + 44) {
+            alienBullets.forEach(b => {
+                if (b.x < (player.x + 23) + player.visibleWidth && b.x + b.width > (player.x + 23) &&
+                    b.y < (player.y + 44) + player.visibleHeight && b.y + b.height > (player.y + 44)) {
                     lives--;
-                    bullet.y = canvas.height + 10;
+                    b.y = canvas.height + 10;
                     if (lives <= 0) {
                         gameOver = true;
                         gameOverText.style.display = 'block';
@@ -271,24 +286,22 @@
                 }
             });
 
-            // Alien hit by player bullets
-            playerBullets.forEach(bullet => {
-                aliens.forEach(alien => {
-                    if (alien.alive && bullet.x < alien.x + alien.width && bullet.x + bullet.width > alien.x &&
-                        bullet.y < alien.y + alien.height && bullet.y + bullet.height > alien.y) {
-                        alien.hits--;
-                        bullet.y = -10;
-                        if (alien.hits <= 0) {
-                            alien.alive = false;
-                            score += alien.sprite === glowtubeSprite ? 20 : 10;
+            playerBullets.forEach(b => {
+                aliens.forEach(a => {
+                    if (a.alive && b.x < a.x + a.width && b.x + b.width > a.x &&
+                        b.y < a.y + a.height && b.y + b.height > a.y) {
+                        a.hits--;
+                        b.y = -10;
+                        if (a.hits <= 0) {
+                            a.alive = false;
+                            score += a.sprite === glowtubeSprite ? 20 : 10;
                         }
                     }
                 });
             });
 
-            // Game over if aliens reach player
-            aliens.forEach(alien => {
-                if (alien.alive && alien.y + alien.height > player.y) {
+            aliens.forEach(a => {
+                if (a.alive && a.y + a.height > player.y) {
                     gameOver = true;
                     gameOverText.style.display = 'block';
                 }
@@ -309,34 +322,39 @@
         function gameLoop() {
             if (gameOver) return;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+
             updatePlayer();
             updateAliens();
             updateBullets();
             checkCollisions();
+
             drawPlayer();
             drawAliens();
             drawBullets();
             drawUI();
+
             if (aliens.every(a => !a.alive) && !levelTransition) resetLevel();
+
             requestAnimationFrame(gameLoop);
         }
 
-        // Wait for images to load
+        // ------------------- IMAGE LOADING -------------------
         let imagesLoaded = 0;
         const totalImages = 3;
-        function checkImagesLoaded() {
+
+        function imageLoaded() {
             imagesLoaded++;
             if (imagesLoaded === totalImages) {
                 initAliens();
                 gameLoop();
             }
         }
-        playerSprite.onload = checkImagesLoaded;
-        mainbaseSprite.onload = checkImagesLoaded;
-        glowtubeSprite.onload = checkImagesLoaded;
-        playerSprite.onerror = checkImagesLoaded;
-        mainbaseSprite.onerror = checkImagesLoaded;
-        glowtubeSprite.onerror = checkImagesLoaded;
+
+        playerSprite.onload = imageLoaded;
+        mainbaseSprite.onload = imageLoaded;
+        glowtubeSprite.onload = imageLoaded;
+
+        playerSprite.onerror = mainbaseSprite.onerror = glowtubeSprite.onerror = imageLoaded;
     </script>
 </body>
 </html>
