@@ -192,18 +192,25 @@ const COMET_MAG_LIMIT = 13.5, ASTEROID_MAG_LIMIT = 10.5, MAX_EACH = 5;
 /** Same-origin proxy first (Cloudflare Pages Function, cached), then JPL directly. */
 async function sbdbQuery(params) {
   const qs = new URLSearchParams(params).toString();
-  const sources = [`/api/sbdb?${qs}`, `https://ssd-api.jpl.nasa.gov/sbdb_query.api?${qs}`];
-  let lastErr;
-  for (const url of sources) {
+  const sources = [
+    ["site proxy", `/api/sbdb?${qs}`],
+    ["NASA direct", `https://ssd-api.jpl.nasa.gov/sbdb_query.api?${qs}`],
+  ];
+  const failures = [];
+  for (const [label, url] of sources) {
     try {
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      if (!Array.isArray(json.fields)) throw new Error("unexpected reply");
+      const text = await res.text();
+      let json;
+      try { json = JSON.parse(text); } catch { throw new Error("reply wasn't JSON (proxy not running?)"); }
+      if (!Array.isArray(json.fields)) throw new Error(json.message || json.error || "unexpected reply");
       return (json.data || []).map((row) => Object.fromEntries(json.fields.map((f, k) => [f, row[k]])));
-    } catch (err) { lastErr = err; }
+    } catch (err) {
+      failures.push(`${label}: ${err.message}`);
+    }
   }
-  throw lastErr;
+  throw new Error(failures.join("; "));
 }
 
 function cleanName(full) {
