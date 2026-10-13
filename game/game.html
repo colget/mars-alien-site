@@ -113,7 +113,8 @@
     width: 84, height: 26,           // matches the shape of ship.png
     bottomGap: 26,                   // space between the ship and the bottom edge
     speed: 300,                      // arrow-key speed
-    steerSmoothing: 0.25,            // touch steering: how quickly the ship glides to your thumb
+    rubDistance: 0.2,                // touch steering: how far your thumb moves (as a fraction
+                                     // of the screen width) to sweep the ship from side to side
   };
 
   const ALIEN = {
@@ -273,14 +274,15 @@
   // =====================================================================
   // INPUT: touch (and mouse)
   // Each finger gets a job when it first touches down:
-  //   left half of the screen  -> steer (works like a slider for the whole width)
+  //   left half of the screen  -> steer by rubbing, like a laptop trackpad
   //   right half of the screen -> hold to fire
   // Tracking every finger separately lets you steer and fire at the same time.
   // =====================================================================
   const touches = new Map();         // pointerId -> { job: "steer" | "fire", x }
+  let steerAmount = 0;               // how far steering fingers have moved since the last frame
 
   document.addEventListener("pointerdown", (e) => {
-    if (e.target.closest("a, button")) return;   // let links and the music button work normally
+    if (e.target instanceof Element && e.target.closest("a, button")) return;   // let links and the music button work normally
     e.preventDefault();
     pressStart();
     touches.set(e.pointerId, {
@@ -293,22 +295,18 @@
     const touch = touches.get(e.pointerId);
     if (!touch) return;
     e.preventDefault();
+    if (touch.job === "steer" && state === "playing" && !isPortrait()) {
+      // Only the MOVEMENT counts, not where the thumb is, so you can rub anywhere
+      // on the left: in the black bar, or lift and put your thumb down again.
+      const moved = e.clientX - touch.x;
+      steerAmount += moved * (GAME_WIDTH - SHIP.width) / (SHIP.rubDistance * window.innerWidth);
+    }
     touch.x = e.clientX;
   });
 
   const releasePointer = (e) => touches.delete(e.pointerId);
   document.addEventListener("pointerup", releasePointer);
   document.addEventListener("pointercancel", releasePointer);
-
-  /** Where a steering finger wants the ship (its left edge), or null if no finger is steering. */
-  function steeringTarget() {
-    for (const touch of touches.values()) {
-      if (touch.job !== "steer") continue;
-      const fraction = clamp(touch.x / (window.innerWidth / 2), 0, 1);
-      return fraction * (GAME_WIDTH - SHIP.width);
-    }
-    return null;
-  }
 
   function isFiring() {
     if (keys.has("Space")) return true;
@@ -425,7 +423,7 @@
     const start = isTouch ? "Tap to start" : "Press Space to start";
     const again = isTouch ? "Tap to play again" : "Press Space to play again";
     const controls = isTouch
-      ? "Slide your left thumb to steer. Hold your right thumb to fire."
+      ? "Rub your left thumb left and right to steer. Hold your right thumb to fire."
       : "Arrow keys to move, Space to fire. M turns the music on or off.";
 
     if (next === "loading") showMessage("Mars Invaders", "Loading…", "");
@@ -460,15 +458,10 @@
 
   function updateShip(dt) {
     const ship = game.ship;
-    const target = steeringTarget();
-    if (target !== null) {
-      // Glide towards the finger. The power keeps the glide the same at any frame rate.
-      const smoothing = 1 - Math.pow(1 - SHIP.steerSmoothing, dt * 60);
-      ship.x += (target - ship.x) * smoothing;
-    } else {
-      if (keys.has("ArrowLeft")) ship.x -= SHIP.speed * dt;
-      if (keys.has("ArrowRight")) ship.x += SHIP.speed * dt;
-    }
+    ship.x += steerAmount;           // rubbing (already a distance, so no "* dt")
+    steerAmount = 0;
+    if (keys.has("ArrowLeft")) ship.x -= SHIP.speed * dt;
+    if (keys.has("ArrowRight")) ship.x += SHIP.speed * dt;
     ship.x = clamp(ship.x, 0, GAME_WIDTH - ship.width);
 
     game.fireCooldown = Math.max(0, game.fireCooldown - dt);
