@@ -72,8 +72,9 @@ for (const name of PLANETS) {
 // ---------------------------------------------------------------- comets & asteroids
 const escape = (s) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
-fetchSmallBodies(jds).then((bodies) => {
+fetchSmallBodies(jds).then(({ bodies, updated }) => {
   const status = $("sb-status");
+  if (updated) $("sb-updated").textContent = `NASA/JPL data downloaded ${longDate(new Date(updated))}.`;
   if (!bodies.length) {
     status.textContent = "Nothing bright enough for binoculars or a small telescope this month. Check back next month.";
     return;
@@ -103,7 +104,7 @@ fetchSmallBodies(jds).then((bodies) => {
 }).catch((err) => {
   const status = $("sb-status");
   status.className = "status error";
-  status.textContent = `Couldn't reach NASA's small-body database (${err.message}). The planets still work; try reloading in a minute.`;
+  status.textContent = `No comets or asteroids to show: ${err.message}. The planets still work.`;
 });
 
 // ---------------------------------------------------------------- drawing

@@ -1,0 +1,41 @@
+# Once a day, download comet and asteroid orbits from NASA/JPL and commit them
+# as sky/data/small-bodies.json. Cloudflare Pages redeploys the site on the push.
+name: Update sky data
+
+on:
+  schedule:
+    - cron: "17 4 * * *"   # 04:17 UTC daily (an off-peak, non-round minute)
+  workflow_dispatch:        # lets you run it by hand: gh workflow run sky-data.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sky-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download from NASA/JPL
+        run: python scripts/update_small_bodies.py
+
+      - name: Commit the new data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add sky/data/small-bodies.json
+          if git diff --cached --quiet; then
+            echo "No change."
+          else
+            git commit -m "Update comet and asteroid data from NASA/JPL"
+            git push
+          fi

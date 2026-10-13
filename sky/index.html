@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/assets/site.css">
+  <link rel="stylesheet" href="/assets/site.css?v=2">
   <style>
     .tracker {
       display: grid;
@@ -186,8 +186,9 @@
 
       <h2>Comets and asteroids</h2>
       <p>The brightest ones this month and next, from NASA/JPL's database of over a million small bodies.</p>
-      <div class="status" id="sb-status" role="status">Asking NASA for this month's comets and asteroids…</div>
+      <div class="status" id="sb-status" role="status">Loading this month's comets and asteroids…</div>
       <ul class="picks" id="body-picks"></ul>
+      <p class="status" id="sb-updated"></p>
 
       <h2>Right now</h2>
       <table class="readout">
@@ -201,7 +202,7 @@
 
   <footer class="wrap site-foot">
     Orbit data from <a href="https://ssd.jpl.nasa.gov/">NASA/JPL</a>: planet orbits from JPL's approximate elements,
-    comets and asteroids live from the Small-Body Database. Magnitudes are estimates, and comets often surprise.
+    comets and asteroids from the Small-Body Database, refreshed daily. Magnitudes are estimates, and comets often surprise.
     Python version on <a href="https://github.com/colget/sky_tracker">GitHub</a>.
   </footer>
 

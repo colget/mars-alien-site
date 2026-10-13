@@ -189,28 +189,17 @@ export function describePlanet(name, jds, iToday) {
 // ---------------------------------------------------------------- JPL small bodies
 const COMET_MAG_LIMIT = 13.5, ASTEROID_MAG_LIMIT = 10.5, MAX_EACH = 5;
 
-/** Same-origin proxy first (Cloudflare Pages Function, cached), then JPL directly. */
-async function sbdbQuery(params) {
-  const qs = new URLSearchParams(params).toString();
-  const sources = [
-    ["site proxy", `/api/sbdb?${qs}`],
-    ["NASA direct", `https://ssd-api.jpl.nasa.gov/sbdb_query.api?${qs}`],
-  ];
-  const failures = [];
-  for (const [label, url] of sources) {
-    try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const text = await res.text();
-      let json;
-      try { json = JSON.parse(text); } catch { throw new Error("reply wasn't JSON (proxy not running?)"); }
-      if (!Array.isArray(json.fields)) throw new Error(json.message || json.error || "unexpected reply");
-      return (json.data || []).map((row) => Object.fromEntries(json.fields.map((f, k) => [f, row[k]])));
-    } catch (err) {
-      failures.push(`${label}: ${err.message}`);
-    }
-  }
-  throw new Error(failures.join("; "));
+/** The daily data file written by .github/workflows/sky-data.yml (JPL is never
+ *  called from visitors' browsers; their fair-use policy asks sites not to). */
+async function loadDataFile() {
+  let res;
+  try { res = await fetch("/sky/data/small-bodies.json", { cache: "no-cache" }); }
+  catch { throw new Error("couldn't load the comet and asteroid data file"); }
+  if (res.status === 404) throw new Error("the comet and asteroid data hasn't been downloaded yet");
+  if (!res.ok) throw new Error(`data file returned HTTP ${res.status}`);
+  const file = await res.json();
+  const rows = (t) => (t.data || []).map((row) => Object.fromEntries(t.fields.map((f, k) => [f, row[k]])));
+  return { updated: file.updated, comets: rows(file.comets), asteroids: rows(file.asteroids) };
 }
 
 function cleanName(full) {
@@ -230,24 +219,9 @@ function makeElement(row) {
   return el;
 }
 
-/** Fetch candidates, keep the brightest comets and asteroids in the window. */
+/** Keep the brightest comets and asteroids in the window. */
 export async function fetchSmallBodies(jds) {
-  const cacheKey = `sky-sbdb-${Math.round(jds[0])}`;
-  let rows;
-  try { rows = JSON.parse(localStorage.getItem(cacheKey)); } catch { rows = null; }
-  if (!rows || Date.now() - rows.at > 12 * 3600e3) {
-    const [jd0, jd1] = [jds[0], jds[jds.length - 1]];
-    const comets = await sbdbQuery({
-      fields: "full_name,e,q,i,om,w,tp,M1,K1", "sb-kind": "c", "sb-xfrag": "1", "full-prec": "1",
-      "sb-cdata": JSON.stringify({ AND: ["q|LT|3.5", "M1|DF", "K1|DF", `tp|RG|${(jd0 - 250).toFixed(1)}|${(jd1 + 250).toFixed(1)}`] }),
-    });
-    const asteroids = await sbdbQuery({
-      fields: "full_name,e,q,i,om,w,tp,H,G", "sb-kind": "a", "full-prec": "1",
-      "sb-cdata": JSON.stringify({ AND: ["H|LT|8", "e|LT|1"] }),
-    });
-    rows = { at: Date.now(), comets, asteroids };
-    try { localStorage.setItem(cacheKey, JSON.stringify(rows)); } catch { /* storage full or blocked */ }
-  }
+  const rows = await loadDataFile();
 
   const earth = jds.map((jd) => planetXYZ("Earth", jd));
   const scored = [];
@@ -274,7 +248,7 @@ export async function fetchSmallBodies(jds) {
   rows.asteroids.forEach((r) => consider("asteroid", r));
 
   const pick = (kind) => scored.filter((b) => b.kind === kind).sort((a, b) => a.best - b.best).slice(0, MAX_EACH);
-  return [...pick("comet"), ...pick("asteroid")].sort((a, b) => a.best - b.best);
+  return { updated: rows.updated, bodies: [...pick("comet"), ...pick("asteroid")].sort((a, b) => a.best - b.best) };
 }
 
 export function describeBody(b, jds, iToday) {
