@@ -1,0 +1,137 @@
+/* mars-alien.com -- shared styles.
+   Palette taken from real Martian light: rust ground, butterscotch dust,
+   and the blue of a Martian sunset (fine dust scatters blue light forward). */
+
+:root {
+  --regolith: #2b1610;   /* base background */
+  --crust:    #3d2018;   /* raised surfaces */
+  --ridge:    #5a3123;   /* borders, tracks */
+  --dust:     #d9a25f;   /* butterscotch: primary accent */
+  --dusk:     #86b6db;   /* martian sunset blue: links, focus, active */
+  --sand:     #f2e3cd;   /* text */
+  --sand-dim: #c4ab8f;   /* secondary text */
+
+  --display: "Bricolage Grotesque", "Atkinson Hyperlegible", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", system-ui, sans-serif;
+
+  /* type scale: 16px base, 1.25 ratio */
+  --s-1: 0.8rem;
+  --s0: 1rem;
+  --s1: 1.25rem;
+  --s2: 1.563rem;
+  --s3: 2.441rem;
+  --s4: clamp(2.6rem, 6vw, 4.6rem);
+
+  --gutter: clamp(16px, 4vw, 48px);
+  --radius: 10px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--regolith);
+  color: var(--sand);
+  font-family: var(--body);
+  font-size: var(--s0);
+  line-height: 1.55;
+}
+
+a { color: var(--dusk); text-underline-offset: 0.18em; }
+a:hover { color: var(--sand); }
+
+:focus-visible {
+  outline: 2px solid var(--dusk);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+h1, h2, h3 {
+  font-family: var(--display);
+  font-weight: 700;
+  line-height: 1.08;
+  margin: 0;
+  letter-spacing: -0.015em;
+}
+
+.wrap {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+}
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+/* ---------- site header ---------- */
+.site-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 22px;
+  padding-bottom: 22px;
+}
+
+.wordmark {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: var(--s1);
+  color: var(--sand);
+  text-decoration: none;
+  letter-spacing: -0.02em;
+}
+.wordmark span { color: var(--dust); }
+
+.site-nav { display: flex; gap: clamp(14px, 3vw, 28px); }
+.site-nav a {
+  color: var(--sand-dim);
+  text-decoration: none;
+  font-weight: 700;
+}
+.site-nav a:hover,
+.site-nav a[aria-current="page"] { color: var(--sand); }
+
+/* ---------- buttons ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 20px;
+  border-radius: 999px;
+  border: 2px solid var(--dust);
+  background: var(--dust);
+  color: var(--regolith);
+  font: 700 var(--s0) var(--body);
+  text-decoration: none;
+  cursor: pointer;
+}
+.btn:hover { background: var(--sand); border-color: var(--sand); color: var(--regolith); }
+
+.btn-quiet {
+  background: transparent;
+  color: var(--sand);
+  border-color: var(--ridge);
+}
+.btn-quiet:hover { background: var(--crust); border-color: var(--sand-dim); color: var(--sand); }
+
+/* ---------- footer ---------- */
+.site-foot {
+  margin-top: 96px;
+  padding-top: 28px;
+  padding-bottom: 40px;
+  border-top: 1px solid var(--ridge);
+  color: var(--sand-dim);
+  font-size: var(--s-1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

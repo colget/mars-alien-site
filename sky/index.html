@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sky tracker | mars-alien</title>
+  <meta name="description" content="A live map of the solar system for this month and next: planets in their real positions, plus the brightest comets and asteroids from NASA/JPL.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/site.css">
+  <style>
+    .tracker {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 380px;
+      gap: 24px;
+      align-items: start;
+    }
+
+    /* ---------- stage ---------- */
+    .stage {
+      position: sticky;
+      top: 12px;
+      background: radial-gradient(circle at 50% 50%, #3a1d14 0%, #241209 75%);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    #sky {
+      display: block;
+      width: 100%;
+      height: min(78vh, 900px);
+      min-height: 360px;
+      touch-action: none;
+      cursor: grab;
+    }
+    .date-badge {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      font-family: var(--display);
+      font-weight: 700;
+      font-size: var(--s2);
+      line-height: 1.1;
+      pointer-events: none;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: rgba(43, 22, 16, 0.78);
+    }
+    .date-badge small {
+      display: block;
+      font-family: var(--body);
+      font-weight: 400;
+      font-size: var(--s-1);
+      color: var(--sand-dim);
+      margin-top: 4px;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px 14px;
+      padding: 12px 14px;
+      background: var(--crust);
+      border-top: 1px solid var(--ridge);
+    }
+    .controls .btn { min-height: 40px; padding: 6px 16px; }
+    .controls label { color: var(--sand-dim); font-size: var(--s-1); }
+    .scrub { flex: 1 1 220px; display: flex; align-items: center; gap: 10px; }
+    .scrub input { flex: 1; accent-color: var(--dust); }
+
+    select {
+      background: var(--regolith);
+      color: var(--sand);
+      border: 1px solid var(--ridge);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font: inherit;
+    }
+
+    .segmented { display: inline-flex; border: 1px solid var(--ridge); border-radius: 999px; overflow: hidden; }
+    .segmented button {
+      background: none;
+      border: 0;
+      color: var(--sand-dim);
+      font: 700 var(--s-1) var(--body);
+      padding: 9px 13px;
+      cursor: pointer;
+    }
+    .segmented button[aria-pressed="true"] { background: var(--dusk); color: var(--regolith); }
+
+    /* ---------- side panel ---------- */
+    .panel h1 { font-size: var(--s3); }
+    .window-note { color: var(--sand-dim); margin: 8px 0 0; }
+    .panel h2 {
+      font-size: var(--s1);
+      margin: 32px 0 6px;
+    }
+    .panel h2 + p { color: var(--sand-dim); font-size: var(--s-1); margin: 0 0 8px; }
+
+    .picks { list-style: none; margin: 0; padding: 0; }
+    .picks li { border-top: 1px solid var(--ridge); }
+    .picks label {
+      display: grid;
+      grid-template-columns: 22px 12px minmax(0, 1fr);
+      gap: 4px 10px;
+      align-items: start;
+      padding: 12px 4px;
+      cursor: pointer;
+    }
+    .picks input { margin: 3px 0 0; width: 18px; height: 18px; accent-color: var(--dust); }
+    .swatch { width: 12px; height: 12px; border-radius: 50%; margin-top: 5px; }
+    .pick-name { font-weight: 700; }
+    .pick-kind { color: var(--sand-dim); font-weight: 400; }
+    .pick-notes {
+      grid-column: 3;
+      margin: 2px 0 0;
+      padding: 0;
+      list-style: none;
+      color: var(--sand-dim);
+      font-size: var(--s-1);
+      line-height: 1.45;
+    }
+    .pick-notes li { border: 0; }
+    .pick-notes .event { color: var(--sand); }
+
+    .status { color: var(--sand-dim); font-size: var(--s-1); padding: 10px 0; }
+    .status.error { color: #f0a9a0; }
+
+    .readout { width: 100%; border-collapse: collapse; font-size: var(--s-1); }
+    .readout th { text-align: left; color: var(--sand-dim); font-weight: 400; padding: 6px 4px; }
+    .readout td { padding: 7px 4px; border-top: 1px solid var(--ridge); font-variant-numeric: tabular-nums; }
+    .readout td:nth-child(2), .readout td:nth-child(3), .readout th:nth-child(2), .readout th:nth-child(3) { text-align: right; }
+
+    .how { color: var(--sand-dim); font-size: var(--s-1); margin-top: 28px; }
+
+    @media (max-width: 960px) {
+      .tracker { grid-template-columns: 1fr; }
+      .stage { position: relative; top: 0; }
+      #sky { height: min(92vw, 70vh); }
+    }
+  </style>
+</head>
+<body>
+  <header class="wrap site-head">
+    <a class="wordmark" href="/">mars<span>-</span>alien</a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="/sky/" aria-current="page">Sky tracker</a>
+      <a href="/game/game.html">Mars Invaders</a>
+    </nav>
+  </header>
+
+  <main class="wrap tracker">
+    <section class="stage" aria-label="Solar system map">
+      <canvas id="sky" role="img" aria-label="Animated map of the solar system. The table in the side panel lists the same objects and their distances."></canvas>
+      <div class="date-badge" aria-live="off"><span id="date-main"></span><small id="date-sub"></small></div>
+      <div class="controls">
+        <button class="btn" id="play" type="button">Pause</button>
+        <label for="speed">Speed</label>
+        <select id="speed">
+          <option value="0.5">½ day a second</option>
+          <option value="1">1 day a second</option>
+          <option value="2" selected>2 days a second</option>
+          <option value="5">5 days a second</option>
+          <option value="10">10 days a second</option>
+        </select>
+        <div class="scrub">
+          <label for="scrub" class="visually-hidden">Date</label>
+          <input id="scrub" type="range" min="0" max="1" step="0.5" aria-label="Date">
+        </div>
+        <button class="btn btn-quiet" id="today" type="button">Today</button>
+        <div class="segmented" role="group" aria-label="Zoom">
+          <button type="button" data-zoom="inner" aria-pressed="false">Inner planets</button>
+          <button type="button" data-zoom="belt" aria-pressed="true">Asteroid belt</button>
+          <button type="button" data-zoom="fit" aria-pressed="false">Fit all</button>
+        </div>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <h1>Sky tracker</h1>
+      <p class="window-note" id="window-note"></p>
+
+      <h2>Planets</h2>
+      <ul class="picks" id="planet-picks"></ul>
+
+      <h2>Comets and asteroids</h2>
+      <p>The brightest ones this month and next, from NASA/JPL's database of over a million small bodies.</p>
+      <div class="status" id="sb-status" role="status">Asking NASA for this month's comets and asteroids…</div>
+      <ul class="picks" id="body-picks"></ul>
+
+      <h2>Right now</h2>
+      <table class="readout">
+        <thead><tr><th scope="col">Object</th><th scope="col">From Earth</th><th scope="col">Brightness</th><th scope="col">Where to look</th></tr></thead>
+        <tbody id="readout"></tbody>
+      </table>
+
+      <p class="how">Brightness is a magnitude: lower is brighter, and about 6 is the faintest you can see by eye from a dark site. The view is from above the plane of the planets, with the direction of the spring equinox to the right. Scroll or pinch on the map to zoom.</p>
+    </aside>
+  </main>
+
+  <footer class="wrap site-foot">
+    Orbit data from <a href="https://ssd.jpl.nasa.gov/">NASA/JPL</a>: planet orbits from JPL's approximate elements,
+    comets and asteroids live from the Small-Body Database. Magnitudes are estimates, and comets often surprise.
+    Python version on <a href="https://github.com/colget/sky_tracker">GitHub</a>.
+  </footer>
+
+  <script type="module" src="/sky/sky.js"></script>
+</body>
+</html>

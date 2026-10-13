@@ -1,163 +1,258 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Coming Soon</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary-color: #f15a29; /* A reddish-orange color for links */
-            --background-color: #8c422c; /* A deep reddish-brown for Mars */
-            --text-color: #f5f5f5; /* Light text for contrast */
-            --shadow-light: rgba(0, 0, 0, 0.2);
-            --shadow-strong: rgba(0, 0, 0, 0.4);
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mars-alien</title>
+  <meta name="description" content="Where the planets are today, the comets and asteroids worth looking for this month, and a little Mars arcade game.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/site.css">
+  <style>
+    /* ---------- hero: the live solar system ---------- */
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+      align-items: center;
+      gap: clamp(24px, 5vw, 72px);
+      padding-top: clamp(16px, 4vw, 48px);
+    }
+    .hero h1 {
+      font-size: var(--s4);
+      font-weight: 800;
+      max-width: 11ch;
+      letter-spacing: -0.03em;
+    }
+    .hero-lede {
+      font-size: var(--s1);
+      color: var(--sand-dim);
+      max-width: 34ch;
+      margin: 22px 0 30px;
+    }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; }
 
-        body {
-            margin: 0;
-            background-color: var(--background-color);
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-            align-items: center;
-            min-height: 100vh;
-            text-align: center;
-            color: var(--text-color);
-            font-family: 'Poppins', sans-serif;
-            transition: background-color 0.5s ease;
-        }
+    .orrery-frame { margin: 0; }
+    .orrery {
+      display: block;
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: radial-gradient(circle at 50% 50%, #3a1d14 0%, var(--regolith) 70%);
+    }
+    .orrery-frame figcaption {
+      text-align: center;
+      color: var(--sand-dim);
+      font-size: var(--s-1);
+      margin-top: 10px;
+      min-height: 1.5em;
+    }
 
-        .image-container {
-            width: 100%;
-            height: 75vh; /* Default height for larger screens */
-            overflow: hidden;
-            position: relative;
-        }
+    /* ---------- events timeline ---------- */
+    .section { margin-top: clamp(64px, 10vw, 120px); }
+    .section h2 { font-size: var(--s3); max-width: 18ch; }
+    .section-intro { color: var(--sand-dim); max-width: 60ch; margin: 12px 0 0; }
 
-        .fullscreen-image {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: block;
-        }
+    .events {
+      list-style: none;
+      margin: 32px 0 0;
+      padding: 0;
+      border-top: 1px solid var(--ridge);
+    }
+    .events li {
+      display: grid;
+      grid-template-columns: 7.5rem minmax(0, 1fr);
+      gap: 20px;
+      padding: 18px 0;
+      border-bottom: 1px solid var(--ridge);
+    }
+    .events time {
+      font-family: var(--display);
+      font-weight: 700;
+      font-size: var(--s2);
+      color: var(--dust);
+      line-height: 1.1;
+    }
+    .events .past time { color: var(--sand-dim); }
+    .events strong { display: block; font-size: var(--s1); }
+    .events span { color: var(--sand-dim); }
+    .events-more { margin-top: 20px; }
 
-        .content-container {
-            max-width: 1200px;
-            margin: 40px auto 20px;
-            padding: 0 20px;
-        }
+    /* ---------- welcome + game ---------- */
+    .welcome {
+      display: grid;
+      grid-template-columns: minmax(0, 0.7fr) minmax(0, 1fr) minmax(0, 1.2fr);
+      gap: clamp(24px, 4vw, 48px);
+      align-items: center;
+    }
+    .welcome video {
+      width: 100%;
+      max-width: 300px;
+      border-radius: var(--radius);
+      display: block;
+    }
+    .welcome h2 { font-size: var(--s3); }
+    .nowrap { white-space: nowrap; }
+    .welcome p { color: var(--sand-dim); max-width: 42ch; }
 
-        .video-container {
-            width: 80%;
-            max-width: 800px;
-            margin: 0 auto 30px;
-            border-radius: 12px;
-            box-shadow: 0 10px 20px var(--shadow-strong);
-            overflow: hidden;
-        }
+    .game {
+      background: var(--crust);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .game img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; }
+    .game-body { padding: 20px 24px 26px; }
+    .game h3 { font-size: var(--s2); }
+    .game p { color: var(--sand-dim); margin: 8px 0 18px; }
 
-        video {
-            width: 100%;
-            height: auto;
-            display: block;
-        }
-
-        h1 {
-            font-size: 2.5em;
-            font-weight: 600;
-            margin-top: 0;
-            margin-bottom: 10px;
-            letter-spacing: 1px;
-        }
-
-        p {
-            font-size: 1.2em;
-            font-weight: 300;
-            margin-bottom: 30px;
-            max-width: 600px;
-            line-height: 1.6;
-        }
-
-        .game-link {
-            font-size: 1.2em;
-            font-weight: 600;
-            color: var(--text-color);
-            text-decoration: none;
-            padding: 12px 28px;
-            border: 2px solid var(--text-color);
-            border-radius: 50px;
-            transition: background-color 0.3s ease, color 0.3s ease, transform 0.2s ease;
-            box-shadow: 0 4px 6px var(--shadow-light);
-        }
-        
-        .game-link:hover {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
-            color: #fff;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 8px var(--shadow-strong);
-        }
-
-        /* Responsive adjustments for screens up to 768px wide (smartphones) */
-        @media (max-width: 768px) {
-            .image-container {
-                height: 40vh; /* Reduced height for mobile devices */
-            }
-            .video-container {
-                width: 90%;
-            }
-            h1 {
-                font-size: 2em;
-            }
-            p {
-                font-size: 1em;
-            }
-            .game-link {
-                font-size: 1em;
-                padding: 10px 20px;
-            }
-        }
-    </style>
+    @media (max-width: 860px) {
+      .hero { grid-template-columns: 1fr; }
+      .hero h1 { max-width: none; }
+      .orrery-frame { max-width: 520px; width: 100%; margin: 0 auto; }
+      .welcome { grid-template-columns: 1fr; }
+      .welcome video { max-width: 220px; }
+    }
+    @media (max-width: 480px) {
+      .events li { grid-template-columns: 1fr; gap: 4px; }
+    }
+  </style>
 </head>
 <body>
-    <div class="image-container">
-        <img src="comingsoon.jpg" alt="Coming Soon" class="fullscreen-image" onerror="this.alt='Image failed to load';">
-    </div>
+  <header class="wrap site-head">
+    <a class="wordmark" href="/">mars<span>-</span>alien</a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="/sky/">Sky tracker</a>
+      <a href="/game/game.html">Mars Invaders</a>
+    </nav>
+  </header>
 
-    <div class="content-container">
-        <div class="video-container">
-            <video id="myVideo" controls muted playsinline>
-                <source src="1v.mp4" type="video/mp4">
-                Your browser does not support the video tag.
-            </video>
+  <main class="wrap">
+    <section class="hero" aria-labelledby="hero-title">
+      <div>
+        <h1 id="hero-title">The solar system, as it is today.</h1>
+        <p class="hero-lede">Every planet in its real position, worked out from NASA's orbit data the moment you visit. The sky tracker adds the comets and asteroids worth looking for this month.</p>
+        <div class="hero-actions">
+          <a class="btn" href="/sky/">Open the sky tracker</a>
+          <a class="btn btn-quiet" href="/game/game.html">Play Mars Invaders</a>
         </div>
+      </div>
+      <figure class="orrery-frame">
+        <canvas class="orrery" id="hero-orrery" role="img"
+                aria-label="Map of the inner solar system showing where Mercury, Venus, Earth and Mars are today"></canvas>
+        <figcaption id="hero-caption"></figcaption>
+      </figure>
+    </section>
 
-        <h1>Our Website is Coming Soon!</h1>
-        <p>We're hard at work creating something truly amazing for you. Stay tuned and check back soon for updates!</p>
-        <a href="/game/game.html" class="game-link">Play a little game! (PC/Laptop only)</a>
-    </div>
+    <section class="section" aria-labelledby="events-title">
+      <h2 id="events-title" data-events-title>Planet events this month and next</h2>
+      <p class="section-intro">Calculated in your browser from the planets' orbits, so this list is always current.</p>
+      <ol class="events" id="events"></ol>
+      <p class="events-more"><a href="/sky/">See the comets and asteroids in the sky tracker</a></p>
+    </section>
 
-    <script>
-        const videoElement = document.getElementById('myVideo');
-        let playCount = 0;
+    <section class="section welcome" aria-labelledby="welcome-title">
+      <video id="handshake" src="/1v.mp4" poster="/assets/handshake-poster.jpg"
+             muted playsinline preload="metadata"
+             aria-label="An astronaut and a silver alien shake hands on the Martian surface"></video>
+      <div>
+        <h2 id="welcome-title">Welcome to <span class="nowrap">mars-alien</span></h2>
+        <p>A small corner of the web for space things built out of curiosity. Everything here runs in your browser, with no sign-ups and no tracking.</p>
+      </div>
+      <article class="game">
+        <img src="/assets/invaders.jpg" alt="A rocky red Martian plain under a hazy sky with Earth rising" loading="lazy" width="900" height="506">
+        <div class="game-body">
+          <h3>Mars Invaders</h3>
+          <p>A little arcade shooter: hold off the invaders before they reach the base. It needs a keyboard, so play it on a computer.</p>
+          <a class="btn btn-quiet" href="/game/game.html">Play Mars Invaders</a>
+        </div>
+      </article>
+    </section>
+  </main>
 
-        // Try to play the video on page load.
-        videoElement.play().catch(error => {
-            console.log("Autoplay was prevented:", error);
-        });
+  <footer class="wrap site-foot">
+    Orbit data from <a href="https://ssd.jpl.nasa.gov/">NASA/JPL</a>.
+    The sky tracker is open source on <a href="https://github.com/colget/sky_tracker">GitHub</a>.
+  </footer>
 
-        // Listen for the 'ended' event
-        videoElement.addEventListener('ended', () => {
-            playCount++;
-            if (playCount < 2) {
-                videoElement.play();
-            } else {
-                videoElement.pause();
-            }
-        });
-    </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96ae9958ed1ce8fc',t:'MTc1NDc4NDY0Mi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+  <script type="module">
+    import { PLANETS, dateToJd, jdToDate, fmtDay, monthWindow, planetXYZ, planetOrbit, describePlanet } from "/sky/astro.js";
+    import { Orrery, PLANET_COLOURS, PLANET_SIZES } from "/sky/orrery.js";
+
+    const now = new Date();
+    const jdNow = dateToJd(now);
+    const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    // ---- hero orrery: inner planets, drifting forward a few weeks then back to today
+    const inner = ["Mercury", "Venus", "Earth", "Mars"];
+    const orrery = new Orrery(document.getElementById("hero-orrery"), { starCount: 180 });
+    orrery.setView(1.75);
+    orrery.setObjects(inner.map((name) => ({
+      id: name, name, kind: "planet", color: PLANET_COLOURS[name], size: PLANET_SIZES[name] + 1,
+      pos: (jd) => planetXYZ(name, jd), orbit: planetOrbit(name, jdNow),
+    })));
+
+    const caption = document.getElementById("hero-caption");
+    const longDate = (d) => d.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
+    const DRIFT_DAYS = 45, DAYS_PER_SEC = 3, HOLD_SEC = 2.5;
+    const cycle = DRIFT_DAYS / DAYS_PER_SEC + HOLD_SEC;
+    const t0 = performance.now();
+
+    function frame(ts) {
+      const s = ((ts - t0) / 1000) % cycle;
+      const offset = reduceMotion ? 0 : Math.max(0, s - HOLD_SEC) * DAYS_PER_SEC;
+      const jd = jdNow + offset;
+      orrery.draw(jd);
+      const d = jdToDate(jd);
+      caption.textContent = offset < 0.5 ? `Today, ${longDate(d)}` : longDate(d);
+      if (!reduceMotion) requestAnimationFrame(frame);
+    }
+    document.fonts.ready.then(() => requestAnimationFrame(frame));
+
+    // ---- planet events in this month + next
+    const { start, end } = monthWindow(now);
+    const jd0 = dateToJd(start), jd1 = dateToJd(end);
+    const jds = [];
+    for (let jd = jd0; jd <= jd1 + 1e-6; jd += 0.5) jds.push(jd);
+    const iToday = jds.reduce((bi, jd, i) => (Math.abs(jd - jdNow) < Math.abs(jds[bi] - jdNow) ? i : bi), 0);
+
+    const monthName = (d) => d.toLocaleDateString(undefined, { month: "long", timeZone: "UTC" });
+    const lastDay = new Date(end.getTime() - 86400000);
+    document.querySelector("[data-events-title]").textContent =
+      `Planet events in ${monthName(start)} and ${monthName(lastDay)}`;
+
+    const rows = [];
+    for (const name of PLANETS) {
+      for (const ev of describePlanet(name, jds, iToday).events) {
+        rows.push({ name, ...ev, date: jdToDate(ev.jd) });
+      }
+    }
+    rows.sort((a, b) => a.date - b.date);
+
+    const list = document.getElementById("events");
+    if (!rows.length) {
+      list.innerHTML = `<li><span></span><div><strong>A quiet stretch</strong><span>No oppositions or conjunctions in this window. The sky tracker still shows where everything is.</span></div></li>`;
+    }
+    for (const r of rows) {
+      const li = document.createElement("li");
+      if (r.date < now) li.className = "past";
+      li.innerHTML = `<time datetime="${r.date.toISOString().slice(0, 10)}"></time><div><strong></strong><span></span></div>`;
+      li.querySelector("time").textContent = fmtDay(r.jd);
+      li.querySelector("strong").textContent = `${r.name}: ${r.title.toLowerCase()}`;
+      li.querySelector("span").textContent = r.date < now ? `${r.detail} (already passed)` : r.detail;
+      list.append(li);
+    }
+
+    // ---- welcome video: play twice when it scrolls into view, as before
+    const video = document.getElementById("handshake");
+    let plays = 0;
+    video.addEventListener("ended", () => { if (++plays < 2) video.play(); });
+    if (!reduceMotion) {
+      new IntersectionObserver((entries, obs) => {
+        if (entries[0].isIntersecting) { video.play().catch(() => {}); obs.disconnect(); }
+      }, { threshold: 0.5 }).observe(video);
+    } else {
+      video.controls = true;
+    }
+  </script>
+</body>
 </html>
