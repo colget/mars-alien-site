@@ -2,8 +2,8 @@
 import {
   PLANETS, dateToJd, jdToDate, fmtDay, monthWindow, planetXYZ, planetOrbit, bodyXYZ, bodyOrbit,
   geometry, skyPhrase, describePlanet, describeBody, fetchSmallBodies,
-} from "./astro.js";
-import { Orrery, PLANET_COLOURS, PLANET_SIZES, COMET_COLOURS, ASTEROID_COLOURS } from "./orrery.js";
+} from "./astro.js?v=3";
+import { Orrery, PLANET_COLOURS, PLANET_SIZES, COMET_COLOURS, ASTEROID_COLOURS } from "./orrery.js?v=3";
 
 const $ = (id) => document.getElementById(id);
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
