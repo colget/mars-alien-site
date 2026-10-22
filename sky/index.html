@@ -4,11 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sky tracker | mars-alien</title>
-  <meta name="description" content="A live map of the solar system for this month and next: planets in their real positions, plus the brightest comets and asteroids from NASA/JPL.">
+  <meta name="description" content="A live map of the solar system for this month and next: planets in their real positions, plus the brightest comets and asteroids and the near-Earth objects passing close by, from NASA/JPL.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/assets/site.css?v=2">
+  <link rel="stylesheet" href="/assets/site.css?v=3">
   <style>
     .tracker {
       display: grid;
@@ -134,10 +134,52 @@
 
     .how { color: var(--sand-dim); font-size: var(--s-1); margin-top: 28px; }
 
+    /* ---------- close approaches ---------- */
+    .flybys { margin-top: clamp(56px, 8vw, 96px); }
+    .flybys h2 { font-size: var(--s3); max-width: 20ch; }
+    .flybys-summary { color: var(--sand-dim); max-width: 68ch; margin: 12px 0 0; }
+    .flyby-list { list-style: none; margin: 28px 0 0; padding: 0; border-top: 1px solid var(--ridge); }
+    .flyby-list li {
+      display: grid;
+      grid-template-columns: 7.5rem minmax(0, 1fr);
+      gap: 20px;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--ridge);
+    }
+    .flyby-list time {
+      display: block;
+      font-family: var(--display);
+      font-weight: 700;
+      font-size: var(--s2);
+      line-height: 1.1;
+      color: var(--dust);
+    }
+    .flyby-list small { color: var(--sand-dim); font-size: var(--s-1); }
+    .flyby-list strong { display: block; font-size: var(--s1); }
+    .flyby-list strong a { color: var(--sand); text-decoration-color: var(--ridge); }
+    .flyby-list strong a:hover { text-decoration-color: var(--sand); }
+    .flyby-list span { color: var(--sand-dim); }
+    .flyby-list .past time { color: var(--sand-dim); }
+    .flyby-list .tag {
+      display: inline-block;
+      vertical-align: middle;
+      margin-left: 6px;
+      padding: 1px 9px;
+      border-radius: 999px;
+      background: var(--dusk);
+      color: var(--regolith);
+      font: 700 var(--s-1) var(--body);
+    }
+    .flybys .btn { margin-top: 20px; }
+    .flybys-note { color: var(--sand-dim); font-size: var(--s-1); max-width: 68ch; margin-top: 24px; }
+
     @media (max-width: 960px) {
       .tracker { grid-template-columns: 1fr; }
       .stage { position: relative; top: 0; }
       #sky { height: min(92vw, 70vh); }
+    }
+    @media (max-width: 480px) {
+      .flyby-list li { grid-template-columns: 1fr; gap: 4px; }
     }
   </style>
 </head>
@@ -200,12 +242,27 @@
     </aside>
   </main>
 
+  <section class="wrap flybys" aria-labelledby="flybys-title">
+    <h2 id="flybys-title">Close approaches to Earth</h2>
+    <p class="flybys-summary" id="flybys-summary" role="status">Loading this month's close approaches…</p>
+    <ol class="flyby-list" id="flyby-list"></ol>
+    <button class="btn btn-quiet" id="flybys-more" type="button" hidden></button>
+    <p class="flybys-note">
+      Distances are from the centre of the Earth. One lunar distance is the average distance to the Moon, 384,400 km.
+      Sizes are a range because brightness alone can't tell a small shiny rock from a larger dark one.
+      A close approach is not a collision: these are the distances each object will pass at.
+      Any chance of an impact is watched separately by NASA's <a href="https://cneos.jpl.nasa.gov/sentry/">Sentry system</a>.
+      Select a name to see its orbit on JPL's website.
+    </p>
+    <p class="flybys-note" id="flybys-updated"></p>
+  </section>
+
   <footer class="wrap site-foot">
     Orbit data from <a href="https://ssd.jpl.nasa.gov/">NASA/JPL</a>: planet orbits from JPL's approximate elements,
-    comets and asteroids from the Small-Body Database, refreshed daily. Magnitudes are estimates, and comets often surprise.
+    comets, asteroids and close approaches from the Small-Body Database, refreshed daily. Magnitudes are estimates, and comets often surprise.
     Python version on <a href="https://github.com/colget/sky_tracker">GitHub</a>.
   </footer>
 
-  <script type="module" src="/sky/sky.js?v=3"></script>
+  <script type="module" src="/sky/sky.js?v=5"></script>
 </body>
 </html>

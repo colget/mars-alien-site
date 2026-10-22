@@ -1,5 +1,5 @@
-# Once a day, download comet and asteroid orbits from NASA/JPL and commit them
-# as sky/data/small-bodies.json. Cloudflare Pages redeploys the site on the push.
+# Once a day, download comet and asteroid orbits and close approaches from
+# NASA/JPL and commit them to sky/data/. Cloudflare Pages redeploys the site on the push.
 name: Update sky data
 
 on:
@@ -32,10 +32,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add sky/data/small-bodies.json
+          git add sky/data/
           if git diff --cached --quiet; then
             echo "No change."
           else
-            git commit -m "Update comet and asteroid data from NASA/JPL"
+            git commit -m "Update sky data from NASA/JPL"
             git push
           fi
