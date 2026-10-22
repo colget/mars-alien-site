@@ -122,6 +122,27 @@ def main():
         print(f"  warning: close approaches not updated ({exc}); keeping the old file")
         return
 
+    # Orbits for those objects, so the page can draw each flyby. Anything that
+    # passes within 0.05 au must have an orbit that comes within 0.05 au of
+    # Earth's (its MOID), so ONE request for all near-Earth objects with a small
+    # MOID is sure to include them all -- far kinder to JPL than ~160 separate
+    # requests. We then keep just the ones on the list.
+    orbits = {"fields": [], "data": []}
+    time.sleep(2)
+    print("Fetching orbits for those objects...")
+    try:
+        neos = query(SBDB_API, {
+            "fields": "pdes,e,q,i,om,w,tp",
+            "sb-group": "neo", "full-prec": "1",
+            "sb-cdata": cdata([f"moid|LT|{CLOSE_APPROACH_LIMIT_AU + 0.01}"]),
+        }, "1.0")
+        des_col = approaches["fields"].index("des")
+        wanted = {row[des_col] for row in approaches["data"]}
+        orbits = {"fields": neos["fields"], "data": [r for r in neos["data"] if r[0] in wanted]}
+        print(f"  found orbits for {len(orbits['data'])} of {len(wanted)} objects")
+    except Exception as exc:
+        print(f"  warning: no orbits this time ({exc}); flybys can't be drawn until tomorrow")
+
     save("close-approaches.json", {
         "updated": stamp,
         "source": "NASA/JPL SBDB Close-Approach Data API",
@@ -129,6 +150,7 @@ def main():
         "until": until.isoformat(),
         "distMaxAU": CLOSE_APPROACH_LIMIT_AU,
         **approaches,
+        "orbits": orbits,
     })
     print(f"Saved {len(approaches['data'])} close approaches")
 

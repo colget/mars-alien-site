@@ -1,7 +1,7 @@
 // approaches.js -- near-Earth objects passing close to Earth.
 // Data: JPL's Close-Approach Data API, downloaded daily by
 // scripts/update_small_bodies.py into sky/data/close-approaches.json.
-import { fmtDay, jdToDate } from "./astro.js?v=3";
+import { fmtDay, jdToDate } from "./astro.js?v=4";
 
 const AU_KM = 149597870.7;
 const TDB_MINUS_UTC_DAYS = 69.184 / 86400;  // JPL times are TDB, which runs ~69 s ahead of UTC
@@ -21,9 +21,22 @@ export async function loadApproaches() {
   if (res.status === 404) throw new Error("the close-approach data hasn't been downloaded yet");
   if (!res.ok) throw new Error(`close-approach data returned HTTP ${res.status}`);
   const file = await res.json();
+
+  // Orbits (when the robot managed to fetch them): designation -> elements in radians
+  const orbits = new Map();
+  const of = file.orbits?.fields || [];
+  for (const row of file.orbits?.data || []) {
+    const o = Object.fromEntries(of.map((f, k) => [f, parseFloat(row[k])]));
+    const deg = Math.PI / 180;
+    if ([o.e, o.q, o.i, o.om, o.w, o.tp].every(Number.isFinite)) {
+      orbits.set(row[0], { e: o.e, q: o.q, i: o.i * deg, om: o.om * deg, w: o.w * deg, tp: o.tp });
+    }
+  }
+
   const list = (file.data || []).map((row) => {
     const r = Object.fromEntries(file.fields.map((f, k) => [f, row[k]]));
     return {
+      orbit: orbits.get(r.des) || null,
       des: r.des,
       name: cleanName(r.fullname || r.des),
       jd: parseFloat(r.jd),
@@ -102,7 +115,7 @@ const SHOW_FIRST = 8;
  * Fill the "Close approaches" section for the visitor's window [jd0, jd1).
  * els = { summary, list, more, note }
  */
-export function renderApproaches(data, { jd0, jd1, jdNow, windowLabel }, els) {
+export function renderApproaches(data, { jd0, jd1, jdNow, windowLabel, onWatch }, els) {
   const inWindow = data.list.filter((a) => a.jd >= jd0 && a.jd < jd1).sort((a, b) => a.jd - b.jd);
   const limitLD = Math.round(toLunarDistances(data.distMaxAU) * 10) / 10;
 
@@ -122,7 +135,7 @@ export function renderApproaches(data, { jd0, jd1, jdNow, windowLabel }, els) {
   const firstView = upcoming.slice(0, SHOW_FIRST);
 
   const draw = (items) => {
-    els.list.replaceChildren(...items.map((a) => approachItem(a, jdNow, a === closest, a === largest)));
+    els.list.replaceChildren(...items.map((a) => approachItem(a, jdNow, a === closest, a === largest, onWatch)));
   };
   draw(firstView.length ? firstView : inWindow.slice(-SHOW_FIRST));
 
@@ -140,7 +153,7 @@ export function renderApproaches(data, { jd0, jd1, jdNow, windowLabel }, els) {
   }
 }
 
-function approachItem(a, jdNow, isClosest, isLargest) {
+function approachItem(a, jdNow, isClosest, isLargest, onWatch) {
   const li = document.createElement("li");
   if (a.jd < jdNow) li.className = "past";
 
@@ -177,6 +190,14 @@ function approachItem(a, jdNow, isClosest, isLargest) {
     `${verb} ${formatLD(a.distAU)} lunar distances away (${km}). ` +
     `${formatSize(a).replace(/^./, (c) => c.toUpperCase())}, moving at ${formatSpeed(a.speedKmS)}.`;
   what.append(title, detail);
+  if (a.orbit && onWatch) {
+    const watch = document.createElement("button");
+    watch.type = "button";
+    watch.className = "watch";
+    watch.textContent = "Watch it pass on the map";
+    watch.addEventListener("click", () => onWatch(a));
+    what.append(watch);
+  }
 
   li.append(when, what);
   return li;

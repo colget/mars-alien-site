@@ -31,6 +31,7 @@ export class Orrery {
     this.starCount = starCount;
     this.objects = [];
     this.lim = 2;
+    this.nearEarth = null;            // { earth: jd => xyz, moon: jd => xyz } when following Earth
     this.font = '600 12px "Atkinson Hyperlegible", system-ui, sans-serif';
     new ResizeObserver(() => this.resize()).observe(canvas);
     this.resize();
@@ -54,15 +55,30 @@ export class Orrery {
   setObjects(objects) { this.objects = objects; }
   setView(lim) { this.lim = lim; }
 
-  /** AU -> screen pixels. */
-  toScreen(p) {
+  /**
+   * Near-Earth view: the camera follows Earth, and flybys are drawn relative to it.
+   * Pass { earth, moon } position functions to switch it on, or null to go back
+   * to the Sun-centred view.
+   */
+  setNearEarth(fns) { this.nearEarth = fns; }
+
+  /** Position relative to the centre of the view (AU) -> screen pixels. */
+  toScreenRel(v) {
     const scale = (Math.min(this.w, this.h) / 2) / this.lim;
-    return [this.w / 2 + p[0] * scale, this.h / 2 - p[1] * scale];
+    return [this.w / 2 + v[0] * scale, this.h / 2 - v[1] * scale];
+  }
+
+  /** Position relative to the Sun (AU) -> screen pixels, allowing for where the camera is. */
+  toScreen(p) {
+    const o = this.centre || [0, 0, 0];
+    return this.toScreenRel([p[0] - o[0], p[1] - o[1], p[2] - o[2]]);
   }
 
   draw(jd) {
     this.lastJd = jd;
     const { ctx, w, h } = this;
+    const near = this.nearEarth;
+    this.centre = near ? near.earth(jd) : null;
     ctx.clearRect(0, 0, w, h);
 
     for (const s of this.stars) {
@@ -70,9 +86,14 @@ export class Orrery {
       ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
     }
 
-    // orbits, then the stretch each object covers in the chosen window
+    if (near) this.drawMoon(jd);
+
+    // orbits, then the stretch each object covers in the chosen window.
+    // Close to Earth these Sun-centred lines don't mean much, so the Earth view
+    // shows each flyby's path past Earth instead.
     ctx.lineWidth = 1;
     for (const o of this.objects) {
+      if (near) continue;
       if (!o.orbit) continue;
       ctx.strokeStyle = o.kind === "planet" ? `rgba(${SAND}, 0.13)` : hexA(o.color, 0.28);
       ctx.setLineDash(o.kind === "planet" ? [] : [4, 5]);
@@ -81,30 +102,39 @@ export class Orrery {
     ctx.setLineDash([]);
     ctx.lineWidth = 2;
     for (const o of this.objects) {
-      if (!o.segment) continue;
-      ctx.strokeStyle = hexA(o.color, 0.42);
-      this.path(o.segment); ctx.stroke();
+      if (near ? !o.flybyPath : !o.segment) continue;
+      ctx.strokeStyle = hexA(o.color, near ? 0.6 : 0.42);
+      if (near) this.pathRel(o.flybyPath); else this.path(o.segment);
+      ctx.stroke();
     }
 
-    // the Sun
+    // the Sun (or an arrow pointing to it, when it's off the edge)
     const [sx, sy] = this.toScreen([0, 0, 0]);
-    const glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, 26);
-    glow.addColorStop(0, "rgba(255, 226, 150, 0.95)");
-    glow.addColorStop(0.35, "rgba(242, 178, 92, 0.45)");
-    glow.addColorStop(1, "rgba(242, 178, 92, 0)");
-    ctx.fillStyle = glow;
-    ctx.beginPath(); ctx.arc(sx, sy, 26, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#ffe7a8";
-    ctx.beginPath(); ctx.arc(sx, sy, 6, 0, Math.PI * 2); ctx.fill();
+    if (sx < 0 || sx > w || sy < 0 || sy > h) {
+      ctx.font = this.font;
+      ctx.textBaseline = "middle";
+      this.edgeMarker({ name: "Sun", color: "#ffe7a8" }, sx, sy);
+    } else {
+      const glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, 26);
+      glow.addColorStop(0, "rgba(255, 226, 150, 0.95)");
+      glow.addColorStop(0.35, "rgba(242, 178, 92, 0.45)");
+      glow.addColorStop(1, "rgba(242, 178, 92, 0)");
+      ctx.fillStyle = glow;
+      ctx.beginPath(); ctx.arc(sx, sy, 26, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#ffe7a8";
+      ctx.beginPath(); ctx.arc(sx, sy, 6, 0, Math.PI * 2); ctx.fill();
+    }
 
-    const positions = new Map(this.objects.map((o) => [o.id, o.pos(jd)]));
+    // Near Earth, only Earth and the flybys: everything else is millions of km off the edges.
+    const shown = near ? this.objects.filter((o) => o.id === "Earth" || o.kind === "neo") : this.objects;
+    const positions = new Map(shown.map((o) => [o.id, o.pos(jd)]));
     const earth = positions.get("Earth");
 
     if (this.sightlines && earth) {
       const [ex, ey] = this.toScreen(earth);
       ctx.lineWidth = 1;
       ctx.setLineDash([2, 4]);
-      for (const o of this.objects) {
+      for (const o of shown) {
         if (o.kind === "planet") continue;
         const [x, y] = this.toScreen(positions.get(o.id));
         ctx.strokeStyle = hexA(o.color, 0.5);
@@ -116,7 +146,7 @@ export class Orrery {
     ctx.font = this.font;
     ctx.textBaseline = "middle";
     const pad = 14;
-    for (const o of this.objects) {
+    for (const o of shown) {
       const p = positions.get(o.id);
       const [x, y] = this.toScreen(p);
       const inside = x > pad && x < w - pad && y > pad && y < h - pad;
@@ -134,6 +164,39 @@ export class Orrery {
         ctx.fillText(o.name, x + (ctx.textAlign === "left" ? o.size + 6 : -o.size - 6), y - o.size - 4);
       }
     }
+  }
+
+  /** The Moon, and its orbit as a ring for scale. */
+  drawMoon(jd) {
+    const { ctx } = this;
+    const m = this.nearEarth.moon(jd);
+    const ring = Math.hypot(m[0], m[1]);
+    const [cx, cy] = this.toScreenRel([0, 0, 0]);
+    const [rx] = this.toScreenRel([ring, 0, 0]);
+    ctx.strokeStyle = `rgba(${SAND}, 0.22)`;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 5]);
+    ctx.beginPath(); ctx.arc(cx, cy, rx - cx, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+    const [mx, my] = this.toScreenRel(m);
+    ctx.fillStyle = "#d8d2c4";
+    ctx.beginPath(); ctx.arc(mx, my, 3.5, 0, Math.PI * 2); ctx.fill();
+    if (this.labels) {
+      ctx.font = this.font;
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "left";
+      ctx.fillStyle = `rgba(${SAND}, 0.7)`;
+      ctx.fillText("Moon", mx + 8, my - 8);
+    }
+  }
+
+  pathRel(points) {
+    const ctx = this.ctx;
+    ctx.beginPath();
+    points.forEach((v, k) => {
+      const [x, y] = this.toScreenRel(v);
+      if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
   }
 
   path(points) {

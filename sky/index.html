@@ -171,6 +171,30 @@
       font: 700 var(--s-1) var(--body);
     }
     .flybys .btn { margin-top: 20px; }
+    .flyby-list .watch {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 6px 14px;
+      border: 1px solid var(--dusk);
+      border-radius: 999px;
+      background: none;
+      color: var(--dusk);
+      font: 700 var(--s-1) var(--body);
+      cursor: pointer;
+    }
+    .flyby-list .watch:hover { background: var(--dusk); color: var(--regolith); }
+
+    .watching {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px 16px;
+      padding: 12px 14px;
+      background: var(--regolith);
+      border-top: 1px solid var(--ridge);
+    }
+    .watching p { flex: 1 1 260px; margin: 0; font-size: var(--s-1); }
+    .watching .btn { min-height: 38px; padding: 6px 16px; }
     .flybys-note { color: var(--sand-dim); font-size: var(--s-1); max-width: 68ch; margin-top: 24px; }
 
     @media (max-width: 960px) {
@@ -208,14 +232,19 @@
         </select>
         <div class="scrub">
           <label for="scrub" class="visually-hidden">Date</label>
-          <input id="scrub" type="range" min="0" max="1" step="0.5" aria-label="Date">
+          <input id="scrub" type="range" min="0" max="1" step="any" aria-label="Date">
         </div>
         <button class="btn btn-quiet" id="today" type="button">Today</button>
         <div class="segmented" role="group" aria-label="Zoom">
           <button type="button" data-zoom="inner" aria-pressed="false">Inner planets</button>
           <button type="button" data-zoom="belt" aria-pressed="true">Asteroid belt</button>
           <button type="button" data-zoom="fit" aria-pressed="false">Fit all</button>
+          <button type="button" data-zoom="earth" aria-pressed="false">Near Earth</button>
         </div>
+      </div>
+      <div class="watching" id="watching" hidden>
+        <p id="watching-text"></p>
+        <button class="btn btn-quiet" id="stop-watching" type="button">Back to the solar system</button>
       </div>
     </section>
 
@@ -238,7 +267,7 @@
         <tbody id="readout"></tbody>
       </table>
 
-      <p class="how">Brightness is a magnitude: lower is brighter, and about 6 is the faintest you can see by eye from a dark site. The view is from above the plane of the planets, with the direction of the spring equinox to the right. Scroll or pinch on the map to zoom.</p>
+      <p class="how">Brightness is a magnitude: lower is brighter, and about 6 is the faintest you can see by eye from a dark site. The view is from above the plane of the planets, with the direction of the spring equinox to the right. Scroll or pinch on the map to zoom. Near Earth, distances are in lunar distances (LD): 1 LD is the distance to the Moon.</p>
     </aside>
   </main>
 
@@ -263,6 +292,6 @@
     Python version on <a href="https://github.com/colget/sky_tracker">GitHub</a>.
   </footer>
 
-  <script type="module" src="/sky/sky.js?v=5"></script>
+  <script type="module" src="/sky/sky.js?v=6"></script>
 </body>
 </html>
