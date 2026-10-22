@@ -41,10 +41,13 @@ export async function loadApproaches() {
       name: cleanName(r.fullname || r.des),
       jd: parseFloat(r.jd),
       distAU: parseFloat(r.dist),
+      distLowAU: parseFloat(r.dist_min),       // JPL's 3-sigma range: the orbit's uncertainty
+      distHighAU: parseFloat(r.dist_max),
       speedKmS: parseFloat(r.v_rel),
       h: parseFloat(r.h),
       diameterKm: r.diameter === null ? null : parseFloat(r.diameter),
-      timeUncertain: /^\d+_/.test(r.t_sigma_f || ""),   // "2_05:10" = uncertain by days
+      timeUncertain: /^\d+_/.test(r.t_sigma_f || ""),   // "2_05:10" = uncertain by days:
+                                                       // a poorly known orbit
     };
   });
   return { updated: file.updated, distMaxAU: file.distMaxAU, list };
@@ -66,6 +69,9 @@ export function formatLD(au) {
   const ld = toLunarDistances(au);
   return ld < 10 ? ld.toFixed(1) : String(Math.round(ld));
 }
+
+/** "0.4 to 46": JPL's possible range for a poorly known orbit */
+export const rangeLD = (a) => `${formatLD(a.distLowAU)} to ${formatLD(a.distHighAU)}`;
 
 export function formatKm(km) {
   if (km >= 1e6) return `${(km / 1e6).toFixed(1)} million km`;
@@ -187,7 +193,10 @@ function approachItem(a, jdNow, isClosest, isLargest, onWatch) {
   const km = formatKm(a.distAU * AU_KM);
   const verb = a.jd < jdNow ? "Passed" : "Passes";
   detail.textContent =
-    `${verb} ${formatLD(a.distAU)} lunar distances away (${km}). ` +
+    (a.timeUncertain
+      ? `${verb} about ${formatLD(a.distAU)} lunar distances away, but its orbit is not well known: ` +
+        `it could be anywhere from ${rangeLD(a)} lunar distances. `
+      : `${verb} ${formatLD(a.distAU)} lunar distances away (${km}). `) +
     `${formatSize(a).replace(/^./, (c) => c.toUpperCase())}, moving at ${formatSpeed(a.speedKmS)}.`;
   what.append(title, detail);
   if (a.orbit && onWatch) {

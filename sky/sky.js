@@ -5,7 +5,7 @@ import {
   moonXYZ, earthCentreXYZ, asteroidMag,
 } from "./astro.js?v=4";
 import { Orrery, PLANET_COLOURS, PLANET_SIZES, COMET_COLOURS, ASTEROID_COLOURS } from "./orrery.js?v=4";
-import { loadApproaches, renderApproaches, formatLD, LUNAR_DISTANCE_KM } from "./approaches.js?v=6";
+import { loadApproaches, renderApproaches, formatLD, rangeLD, LUNAR_DISTANCE_KM } from "./approaches.js?v=7";
 
 const $ = (id) => document.getElementById(id);
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -290,7 +290,11 @@ function watchFlyby(a) {
   note.hidden = false;
   $("watching-text").textContent =
     `Following ${a.name} past Earth. Closest approach ${fmtDay(a.jd)}, ` +
-    `${formatLD(a.distAU)} lunar distances. The dotted ring is the Moon's orbit.`;
+    `${formatLD(a.distAU)} lunar distances. The dotted ring is the Moon's orbit.` +
+    (a.timeUncertain
+      ? ` Its orbit is not well known, so treat this path as a rough guide: ` +
+        `it could pass anywhere from ${rangeLD(a)} lunar distances, days earlier or later.`
+      : "");
   $("sky").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
 }
 
