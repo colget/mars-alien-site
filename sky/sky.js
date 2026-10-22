@@ -4,6 +4,7 @@ import {
   geometry, skyPhrase, describePlanet, describeBody, fetchSmallBodies,
 } from "./astro.js?v=3";
 import { Orrery, PLANET_COLOURS, PLANET_SIZES, COMET_COLOURS, ASTEROID_COLOURS } from "./orrery.js?v=3";
+import { loadApproaches, renderApproaches } from "./approaches.js?v=5";
 
 const $ = (id) => document.getElementById(id);
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -14,7 +15,7 @@ const jdNow = dateToJd(now);
 const { start, end } = monthWindow(now);
 const jd0 = dateToJd(start), jd1 = dateToJd(end);
 const jds = [];
-for (let jd = jd0; jd <= jd1 + 1e-6; jd += 0.5) jds.push(jd);
+for (let jd = jd0; jd < jd1; jd += 0.5) jds.push(jd);
 const iToday = jds.reduce((bi, jd, i) => (Math.abs(jd - jdNow) < Math.abs(jds[bi] - jdNow) ? i : bi), 0);
 const segGrid = jds.filter((_, i) => i % 2 === 0);
 
@@ -105,6 +106,16 @@ fetchSmallBodies(jds).then(({ bodies, updated }) => {
   const status = $("sb-status");
   status.className = "status error";
   status.textContent = `No comets or asteroids to show: ${err.message}. The planets still work.`;
+});
+
+// ---------------------------------------------------------------- close approaches
+const monthName = (d) => d.toLocaleDateString(undefined, { month: "long", timeZone: "UTC" });
+const windowLabel = `${monthName(start)} and ${monthName(new Date(end - 86400000))}`;
+loadApproaches().then((data) => {
+  renderApproaches(data, { jd0, jd1, jdNow, windowLabel },
+    { summary: $("flybys-summary"), list: $("flyby-list"), more: $("flybys-more"), note: $("flybys-updated") });
+}).catch((err) => {
+  $("flybys-summary").textContent = `No close approaches to show: ${err.message}.`;
 });
 
 // ---------------------------------------------------------------- drawing

@@ -63,6 +63,9 @@ h1, h2, h3 {
   padding: 0 var(--gutter);
 }
 
+/* Make the "hidden" attribute win over classes like .btn that set display */
+[hidden] { display: none !important; }
+
 .visually-hidden {
   position: absolute; width: 1px; height: 1px; overflow: hidden;
   clip: rect(0 0 0 0); white-space: nowrap;

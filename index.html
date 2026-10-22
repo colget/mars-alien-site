@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/assets/site.css?v=2">
+  <link rel="stylesheet" href="/assets/site.css?v=3">
   <style>
     /* ---------- hero: the live solar system ---------- */
     .hero {
@@ -212,7 +212,7 @@
     const { start, end } = monthWindow(now);
     const jd0 = dateToJd(start), jd1 = dateToJd(end);
     const jds = [];
-    for (let jd = jd0; jd <= jd1 + 1e-6; jd += 0.5) jds.push(jd);
+    for (let jd = jd0; jd < jd1; jd += 0.5) jds.push(jd);
     const iToday = jds.reduce((bi, jd, i) => (Math.abs(jd - jdNow) < Math.abs(jds[bi] - jdNow) ? i : bi), 0);
 
     const monthName = (d) => d.toLocaleDateString(undefined, { month: "long", timeZone: "UTC" });
