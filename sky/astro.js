@@ -86,6 +86,38 @@ export function planetOrbit(name, jd, n = 240) {
   return pts;
 }
 
+// ---------------------------------------------------------------- the Moon and Earth's centre
+const MOON_EARTH_MASS = 0.0123000371;
+const KM_PER_AU = 149597870.7;
+
+/**
+ * The Moon's position relative to Earth's centre (AU, J2000 ecliptic), from the
+ * main terms of the lunar theory. Good to about half a degree: plenty for a map.
+ */
+export function moonXYZ(jd) {
+  const d = jd - J2000, T = d / 36525;
+  const L = 218.316 + 13.176396 * d;          // mean longitude
+  const M = 134.963 + 13.064993 * d;          // mean anomaly
+  const F = 93.272 + 13.22935 * d;            // argument of latitude
+  const D = 297.85 + 12.190749 * d;           // mean elongation from the Sun
+  const Ms = 357.529 + 0.98560028 * d;        // the Sun's mean anomaly
+  const s = (x) => Math.sin(x * DEG), c = (x) => Math.cos(x * DEG);
+  const lon = (L + 6.289 * s(M) + 1.274 * s(2 * D - M) + 0.658 * s(2 * D) - 0.186 * s(Ms)
+               - 1.3972 * T) * DEG;           // last term: precession back to J2000
+  const lat = 5.128 * s(F) * DEG;
+  const r = (385001 - 20905 * c(M) - 3699 * c(2 * D - M) - 2956 * c(2 * D)) / KM_PER_AU;
+  return [r * Math.cos(lat) * Math.cos(lon), r * Math.cos(lat) * Math.sin(lon), r * Math.sin(lat)];
+}
+
+/**
+ * Earth's centre. The planet formulas give the Earth-Moon balance point, which is
+ * about 4,700 km from Earth's centre, towards the Moon. That matters close up.
+ */
+export function earthCentreXYZ(jd) {
+  const b = planetXYZ("Earth", jd), m = moonXYZ(jd), k = MOON_EARTH_MASS / (1 + MOON_EARTH_MASS);
+  return [b[0] - k * m[0], b[1] - k * m[1], b[2] - k * m[2]];
+}
+
 /** Small body from {e, q, i, om, w (radians), tp (JD)} -- ellipse, parabola or hyperbola. */
 export function bodyXYZ(el, jd) {
   const t = jd - el.tp, { e, q } = el;
